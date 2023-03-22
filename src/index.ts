@@ -7,7 +7,7 @@ const vkey = core.getInput("vkey")
 
 greet(vid,vkey)
 function greet(vid:string, vkey:string){
-//console.log(`'hello ${name}'`)
+console.log(`'vid ${vid} vkey ${vkey}'`)
 let exportCommandVID
 let exportCommandVKEY
 let curlCommandOutput

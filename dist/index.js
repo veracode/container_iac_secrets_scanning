@@ -29,7 +29,7 @@ const vid = core.getInput("vid");
 const vkey = core.getInput("vkey");
 greet(vid, vkey);
 function greet(vid, vkey) {
-    //console.log(`'hello ${name}'`)
+    console.log(`'vid ${vid} vkey ${vkey}'`);
     let exportCommandVID;
     let exportCommandVKEY;
     let curlCommandOutput;
