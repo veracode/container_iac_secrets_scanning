@@ -1,6 +1,13 @@
 name : 'Veracode Container Scanning GitHub Action'
 author : 'Greg'
 
+inputs:
+  name:
+    description : 'Name to greet'
+    required: false
+    default: 'TEST'
+
+
 runs:
   using: 'node16'
   main: 'dist/index.js'
