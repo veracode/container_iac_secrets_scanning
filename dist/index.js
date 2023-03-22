@@ -52,7 +52,7 @@ function greet(vid, vkey) {
         exportCommandVKEY = ex.stdout.toString();
     }
     try {
-        curlCommandOutput = (0, child_process_1.execSync)(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh & ./veracode scan --source . --type directory --format table`);
+        curlCommandOutput = (0, child_process_1.execSync)(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode scan --source . --type directory --format table`);
         core.info('---- DEBUG OUTPUT START ----');
         core.info('---- Cli installation ' + curlCommandOutput);
         core.info('---- DEBUG OUTPUT END ----');
