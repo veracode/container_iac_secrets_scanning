@@ -25,16 +25,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(require("@actions/core"));
 const child_process_1 = require("child_process");
-const vid = core.getInput("vid");
-const vkey = core.getInput("vkey");
-greet(vid, vkey);
-function greet(vid, vkey) {
-    console.log(`'vid ${vid} vkey ${vkey}'`);
-    let exportCommandVID;
-    let exportCommandVKEY;
+const path = core.getInput("path");
+greet(path);
+function greet(path) {
+    console.log(`'Path :  ${path}'`);
     let curlCommandOutput;
     try {
-        curlCommandOutput = (0, child_process_1.execSync)(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode scan --source . --type directory --format table`);
+        curlCommandOutput = (0, child_process_1.execSync)(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode scan --source ${path} --type directory --format table`);
         core.info('---- DEBUG OUTPUT START ----');
         core.info('---- Cli installation ' + curlCommandOutput);
         core.info('---- DEBUG OUTPUT END ----');
