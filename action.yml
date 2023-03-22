@@ -1,0 +1,6 @@
+name : 'Veracode Container Scanning GitHub Action'
+author : 'Greg'
+
+runs:
+  using: 'node16'
+  main: 'dist/index.js'
