@@ -4,6 +4,6 @@ const inputName = getInput("name")
 greet(inputName)
 function greet(name:string){
 
-console.log('hello ${name}')
+console.log(`'hello ${name}'`)
 }
 
