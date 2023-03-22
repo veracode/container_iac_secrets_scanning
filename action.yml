@@ -2,6 +2,12 @@ name : 'Veracode Container Scanning GitHub Action'
 author : 'Greg'
 
 inputs:
+  vid:
+    description : 'vid'
+    required: true
+  vkey:
+    description : 'vkey'
+    required: true
   path:
     description : 'path to analyze'
     required: true
