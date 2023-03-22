@@ -1,0 +1,23 @@
+{
+  "name": "veracode-container-scanning-action",
+  "version": "1.0.0",
+  "description": "",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/5l1D3R/veracode-container-scanning-action.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/5l1D3R/veracode-container-scanning-action/issues"
+  },
+  "homepage": "https://github.com/5l1D3R/veracode-container-scanning-action#readme",
+  "devDependencies": {
+    "@types/node": "^18.15.5",
+    "typescript": "^5.0.2"
+  }
+}
