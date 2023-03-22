@@ -34,24 +34,6 @@ function greet(vid, vkey) {
     let exportCommandVKEY;
     let curlCommandOutput;
     try {
-        exportCommandVID = (0, child_process_1.execSync)(`export VERACODE_API_KEY_ID=${vid}`);
-        core.info('---- DEBUG OUTPUT START ----');
-        core.info('---- Export installation VID ' + exportCommandVID);
-        core.info('---- DEBUG OUTPUT END ----');
-    }
-    catch (ex) {
-        exportCommandVID = ex.stdout.toString();
-    }
-    try {
-        exportCommandVKEY = (0, child_process_1.execSync)(`export VERACODE_API_KEY_SECRET=${vkey}`);
-        core.info('---- DEBUG OUTPUT START ----');
-        core.info('---- Export installation VKEY ' + exportCommandVKEY);
-        core.info('---- DEBUG OUTPUT END ----');
-    }
-    catch (ex) {
-        exportCommandVKEY = ex.stdout.toString();
-    }
-    try {
         curlCommandOutput = (0, child_process_1.execSync)(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode scan --source . --type directory --format table`);
         core.info('---- DEBUG OUTPUT START ----');
         core.info('---- Cli installation ' + curlCommandOutput);

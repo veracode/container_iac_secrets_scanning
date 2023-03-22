@@ -2,12 +2,10 @@ name : 'Veracode Container Scanning GitHub Action'
 author : 'Greg'
 
 inputs:
-  vid:
-    description : 'Veracode API id'
+  path:
+    description : 'path to analyze'
     required: true
-  vkey:
-    description : 'Veracode API key'
-    required: true
+    default: '.'
 runs:
   using: 'node16'
   main: 'dist/index.js'
