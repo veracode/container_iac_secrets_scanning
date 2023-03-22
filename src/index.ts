@@ -32,7 +32,7 @@ let curlCommandOutput
     } 
     try {
         
-        curlCommandOutput = execSync(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode scan --source . --type directory --format table`);
+        curlCommandOutput = execSync(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh & ./veracode scan --source . --type directory --format table`);
         core.info('---- DEBUG OUTPUT START ----')
         core.info('---- Cli installation '+curlCommandOutput)
         core.info('---- DEBUG OUTPUT END ----')
