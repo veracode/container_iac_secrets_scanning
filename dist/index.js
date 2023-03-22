@@ -28,8 +28,8 @@ const child_process_1 = require("child_process");
 const vid = core.getInput("vid");
 const vkey = core.getInput("vkey");
 const path = core.getInput("path");
-greet(vid, vkey, path);
-function greet(vid, vkey, path) {
+ContainerScan(vid, vkey, path);
+function ContainerScan(vid, vkey, path) {
     console.log(`'Path :  ${path}'`);
     let curlCommandOutput;
     try {
@@ -38,6 +38,7 @@ function greet(vid, vkey, path) {
         curlCommandOutput = (0, child_process_1.execSync)(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode scan --source ${path} --type directory --format table`);
         core.info('---- DEBUG OUTPUT START ----');
         core.info('---- Cli installation ' + curlCommandOutput);
+        core.notice(`${curlCommandOutput}`);
         core.info('---- DEBUG OUTPUT END ----');
     }
     catch (ex) {
