@@ -12,6 +12,18 @@ inputs:
     description : 'path to analyze'
     required: true
     default: '.'
+  format:
+    description: 'output file format'
+    required: true
+    default: 'scan'
+  scanType:
+    description: 'scan type'
+    required: true
+    defaut: 'table'
+  export:
+    description: 'export to file'
+    required: true
+    defaut: 'false'
 runs:
   using: 'node16'
   main: 'dist/index.js'
