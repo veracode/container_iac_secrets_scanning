@@ -48,7 +48,8 @@ let curlCommandOutput
                 continueOnError: true
             }
 
-            const uploadResult = await artifactClient.uploadArtifact(artifactName, files, rootDirectory, options)
+            const uploadResult = artifactClient.uploadArtifact(artifactName, files, rootDirectory, options)
+            core.info('Upload results:' + uploadResult)
             core.info(`${curlCommandOutput}`)
             core.notice(`${curlCommandOutput}`)
             }

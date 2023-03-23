@@ -61,7 +61,8 @@ async function ContainerScan(vid, vkey, path, format, scanType, exportfile) {
             const options = {
                 continueOnError: true
             };
-            const uploadResult = await artifactClient.uploadArtifact(artifactName, files, rootDirectory, options);
+            const uploadResult = artifactClient.uploadArtifact(artifactName, files, rootDirectory, options);
+            core.info('Upload results:' + uploadResult);
             core.info(`${curlCommandOutput}`);
             core.notice(`${curlCommandOutput}`);
         }
