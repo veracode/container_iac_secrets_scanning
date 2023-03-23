@@ -32,9 +32,10 @@ let curlCommandOutput
             curlCommandOutput = execSync(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${scanType} --source ${path} --type directory --format ${format} --output results${ext} `);
             //store output files as artifacts
             const artifact = require('@actions/artifact');
-            const artifactClient = artifact.create()
+            const artifactClient = artifact.create();
             const artifactName = 'Veracode Container Scanning Results';
-            const files = `'results${ext}'`
+            const files = `'results${ext}'`;
+            core.info(files)
 
             const rootDirectory = process.cwd()
             const options = {

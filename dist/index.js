@@ -53,6 +53,7 @@ async function ContainerScan(vid, vkey, path, format, scanType, exportfile) {
             const artifactClient = artifact.create();
             const artifactName = 'Veracode Container Scanning Results';
             const files = `'results${ext}'`;
+            core.info(files);
             const rootDirectory = process.cwd();
             const options = {
                 continueOnError: true
