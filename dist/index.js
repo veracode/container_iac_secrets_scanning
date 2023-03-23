@@ -46,8 +46,11 @@ async function ContainerScan(vid, vkey, path, format, scanType, exportfile) {
             ext = '.txt';
         if (format == 'cyclonedx')
             ext = '.xml';
+        let scanCommand;
         if (exportfile = 'true') {
-            curlCommandOutput = (0, child_process_1.execSync)(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${scanType} --source ${path} --type directory --format ${format} --output results${ext} `);
+            scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${scanType} --source ${path} --type directory --format ${format} --output results${ext} `;
+            core.info('Scan command :' + scanCommand);
+            curlCommandOutput = (0, child_process_1.execSync)(scanCommand);
             //store output files as artifacts
             const artifact = require('@actions/artifact');
             const artifactClient = artifact.create();

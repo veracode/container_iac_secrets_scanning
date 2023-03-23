@@ -31,9 +31,11 @@ let curlCommandOutput
           ext='.txt'
         if(format=='cyclonedx') 
           ext='.xml'
-
+        let scanCommand
         if(exportfile='true') {
-            curlCommandOutput = execSync(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${scanType} --source ${path} --type directory --format ${format} --output results${ext} `);
+            scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${scanType} --source ${path} --type directory --format ${format} --output results${ext} `
+            core.info('Scan command :' + scanCommand)
+            curlCommandOutput = execSync(scanCommand);
             //store output files as artifacts
             const artifact = require('@actions/artifact');
             const artifactClient = artifact.create();
