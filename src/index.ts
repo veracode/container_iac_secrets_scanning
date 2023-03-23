@@ -13,6 +13,10 @@ const exportfile = core.getInput("export", {required:true})
 
 
 ContainerScan(vid, vkey, path, format, scanType, exportfile)
+
+
+
+
 async function ContainerScan(vid:string, vkey:string, path:string, format:string, scanType:string, exportfile:string){
 console.log(`'Path :  ${path}'`)
 let curlCommandOutput
@@ -46,8 +50,9 @@ let curlCommandOutput
             core.info(`${curlCommandOutput}`)
             core.notice(`${curlCommandOutput}`)
         }
-    } catch (ex:any){
-        curlCommandOutput = ex.stdout.toString()
+    } 
+    catch (ex:any){
+    //    curlCommandOutput = ex.stdout.toString()
     } 
 }
 

@@ -68,6 +68,6 @@ async function ContainerScan(vid, vkey, path, format, scanType, exportfile) {
         }
     }
     catch (ex) {
-        curlCommandOutput = ex.stdout.toString();
+        //    curlCommandOutput = ex.stdout.toString()
     }
 }
