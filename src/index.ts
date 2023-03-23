@@ -1,5 +1,5 @@
 import * as core from "@actions/core"
-import {create, UploadOptions} from '@actions/artifact'
+import * as artifact from '@actions/artifact'
 import * as github from "@actions/github"
 import { execSync } from "child_process";
 import { env } from "process";
@@ -37,21 +37,16 @@ let curlCommandOutput
             core.info('Scan command :' + scanCommand)
             curlCommandOutput = execSync(scanCommand);
             //store output files as artifacts
-            const artifact = require('@actions/artifact');
             const artifactClient = artifact.create();
             const artifactName = 'Veracode Container Scanning Results';
-            const files = `results${ext}`;
-            core.info(files)
-
+            const files = ['`results${ext}`'];
+            
             const rootDirectory = process.cwd()
             const options = {
                 continueOnError: true
             }
-
-            const uploadResult = artifactClient.uploadArtifact(artifactName, files, rootDirectory, options)
-            core.info('Upload results:' + uploadResult)
+            const uploadResult = await artifactClient.uploadArtifact(artifactName, files, rootDirectory, options)
             core.info(`${curlCommandOutput}`)
-            core.notice(`${curlCommandOutput}`)
             }
         else{
             curlCommandOutput = execSync(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${scanType} --source ${path} --type directory --format ${format}`);

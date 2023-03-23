@@ -24,6 +24,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(require("@actions/core"));
+const artifact = __importStar(require("@actions/artifact"));
 const child_process_1 = require("child_process");
 const process_1 = require("process");
 const vid = core.getInput("vid", { required: true });
@@ -52,19 +53,15 @@ async function ContainerScan(vid, vkey, path, format, scanType, exportfile) {
             core.info('Scan command :' + scanCommand);
             curlCommandOutput = (0, child_process_1.execSync)(scanCommand);
             //store output files as artifacts
-            const artifact = require('@actions/artifact');
             const artifactClient = artifact.create();
             const artifactName = 'Veracode Container Scanning Results';
-            const files = `results${ext}`;
-            core.info(files);
+            const files = ['`results${ext}`'];
             const rootDirectory = process.cwd();
             const options = {
                 continueOnError: true
             };
-            const uploadResult = artifactClient.uploadArtifact(artifactName, files, rootDirectory, options);
-            core.info('Upload results:' + uploadResult);
+            const uploadResult = await artifactClient.uploadArtifact(artifactName, files, rootDirectory, options);
             core.info(`${curlCommandOutput}`);
-            core.notice(`${curlCommandOutput}`);
         }
         else {
             curlCommandOutput = (0, child_process_1.execSync)(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${scanType} --source ${path} --type directory --format ${format}`);
