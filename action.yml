@@ -26,7 +26,7 @@ inputs:
     defaut: 'false'
 runs:
   using: 'node16'
-  main: 'dist/index.js'
   steps:
     - run: sudo apt-get -qy install curl libc6
       shell: bash
+  main: 'dist/index.js'
