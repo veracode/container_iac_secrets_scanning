@@ -40,11 +40,11 @@ async function ContainerScan(vid, vkey, path, format, scanType, exportfile) {
         let ext;
         process_1.env.VERACODE_API_KEY_ID = vid;
         process_1.env.VERACODE_API_KEY_SECRET = vkey;
-        if (format = 'json')
+        if (format == 'json')
             ext = '.json';
-        if (format = 'table')
+        if (format == 'table')
             ext = '.txt';
-        if (format = 'cyclonedx')
+        if (format == 'cyclonedx')
             ext = '.xml';
         if (exportfile = 'true') {
             curlCommandOutput = (0, child_process_1.execSync)(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${scanType} --source ${path} --type directory --format ${format} --output results${ext} `);

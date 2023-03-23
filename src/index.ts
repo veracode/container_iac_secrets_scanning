@@ -24,9 +24,13 @@ let curlCommandOutput
         let ext 
         env.VERACODE_API_KEY_ID= vid
         env.VERACODE_API_KEY_SECRET= vkey
-        if(format='json') ext='.json'
-        if(format='table') ext='.txt'
-        if(format='cyclonedx') ext='.xml'
+        
+        if(format=='json')
+          ext='.json'
+        if(format=='table')
+          ext='.txt'
+        if(format=='cyclonedx') 
+          ext='.xml'
 
         if(exportfile='true') {
             curlCommandOutput = execSync(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${scanType} --source ${path} --type directory --format ${format} --output results${ext} `);
