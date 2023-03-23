@@ -39,7 +39,7 @@ let curlCommandOutput
             //store output files as artifacts
             const artifactClient = artifact.create();
             const artifactName = 'Veracode Container Scanning Results';
-            const files = ['`results${ext}`'];
+            const files = [`results${ext}`];
             
             const rootDirectory = process.cwd()
             const options = {
