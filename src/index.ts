@@ -38,12 +38,14 @@ let curlCommandOutput
             }
 
             const uploadResult = await artifactClient.uploadArtifact(artifactName, files, rootDirectory, options)
+            core.info(`${curlCommandOutput}`)
+            core.notice(`${curlCommandOutput}`)
             }
         else{
             curlCommandOutput = execSync(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${scanType} --source ${path} --type directory --format ${format}`);
+            core.info(`${curlCommandOutput}`)
+            core.notice(`${curlCommandOutput}`)
         }
-        core.info(`${curlCommandOutput}`)
-        core.notice(`${curlCommandOutput}`)
     } catch (ex:any){
         curlCommandOutput = ex.stdout.toString()
     } 

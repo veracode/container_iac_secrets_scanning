@@ -58,12 +58,14 @@ async function ContainerScan(vid, vkey, path, format, scanType, exportfile) {
                 continueOnError: true
             };
             const uploadResult = await artifactClient.uploadArtifact(artifactName, files, rootDirectory, options);
+            core.info(`${curlCommandOutput}`);
+            core.notice(`${curlCommandOutput}`);
         }
         else {
             curlCommandOutput = (0, child_process_1.execSync)(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${scanType} --source ${path} --type directory --format ${format}`);
+            core.info(`${curlCommandOutput}`);
+            core.notice(`${curlCommandOutput}`);
         }
-        core.info(`${curlCommandOutput}`);
-        core.notice(`${curlCommandOutput}`);
     }
     catch (ex) {
         curlCommandOutput = ex.stdout.toString();
