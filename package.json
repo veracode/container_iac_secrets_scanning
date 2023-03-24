@@ -18,7 +18,10 @@
   "homepage": "https://github.com/5l1D3R/veracode-container-scanning-action#readme",
   "devDependencies": {
     "@types/node": "^18.15.5",
-    "typescript": "^5.0.2"
+    "ts-loader": "^9.4.2",
+    "typescript": "^5.0.2",
+    "webpack": "^5.76.3",
+    "webpack-cli": "^5.0.1"
   },
   "dependencies": {
     "@actions/artifact": "^1.1.1",
