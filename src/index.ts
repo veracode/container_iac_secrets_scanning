@@ -1,5 +1,6 @@
-import { runScan } from "./containerScan";
+
 import * as core from "@actions/core"
+import { runScan } from "./containerScan"
 
 
 
