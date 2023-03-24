@@ -30,7 +30,7 @@ let curlCommandOutput
         let scanCommand
         if(exportfile='true') {
             scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${scanType} --source ${path} --type directory --format ${format} --output results${ext} `
-            core.info('Scan command :' + scanCommand)
+            core.info('Scan command : ' + scanCommand)
             curlCommandOutput = execSync(scanCommand)
             core.info(`${curlCommandOutput}`)
 
