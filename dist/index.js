@@ -22,64 +22,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(require("@actions/core"));
-const artifact = __importStar(require("@actions/artifact"));
-const child_process_1 = require("child_process");
-const process_1 = require("process");
+const containerScan_1 = require("./containerScan");
 const vid = core.getInput("vid", { required: true });
 const vkey = core.getInput("vkey", { required: true });
 const path = core.getInput("path", { required: true });
 const format = core.getInput("format", { required: true });
 const scanType = core.getInput("scanType", { required: true });
 const exportfile = core.getInput("export", { required: true });
-ContainerScan(vid, vkey, path, format, scanType, exportfile);
-function ContainerScan(vid, vkey, path, format, scanType, exportfile) {
-    return __awaiter(this, void 0, void 0, function* () {
-        console.log(`'Path :  ${path}'`);
-        let curlCommandOutput;
-        try {
-            let ext;
-            process_1.env.VERACODE_API_KEY_ID = vid;
-            process_1.env.VERACODE_API_KEY_SECRET = vkey;
-            if (format == 'json')
-                ext = '.json';
-            if (format == 'table')
-                ext = '.txt';
-            if (format == 'cyclonedx')
-                ext = '.xml';
-            let scanCommand;
-            if (exportfile = 'true') {
-                scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${scanType} --source ${path} --type directory --format ${format} --output results${ext} `;
-                core.info('Scan command :' + scanCommand);
-                curlCommandOutput = (0, child_process_1.execSync)(scanCommand);
-                core.info(`${curlCommandOutput}`);
-                //store output files as artifacts
-                const artifactClient = artifact.create();
-                const artifactName = 'Veracode Container Scanning Results';
-                const files = [`results${ext}`];
-                const rootDirectory = process.cwd();
-                const options = {
-                    continueOnError: true
-                };
-                const uploadResult = yield artifactClient.uploadArtifact(artifactName, files, rootDirectory, options);
-            }
-            else {
-                curlCommandOutput = (0, child_process_1.execSync)(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${scanType} --source ${path} --type directory --format ${format}`);
-                core.info(`${curlCommandOutput}`);
-            }
-        }
-        catch (ex) {
-            curlCommandOutput = ex.stdout.toString();
-        }
-    });
-}
+(0, containerScan_1.ContainerScan)(vid, vkey, path, format, scanType, exportfile);
