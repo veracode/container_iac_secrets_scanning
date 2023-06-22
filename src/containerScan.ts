@@ -96,7 +96,9 @@ export async function ContainerScan(parameters:any) {
             }
 
             if ( parameters.fail_build == "true" ){
-                const policyPassed = commentBody.substring('"policy-passed":')
+                //const policyPassed = commentBody.substring('"policy-passed":')
+                const regex = /\"policy-passed\": (false|pass)/g;
+                const policyPassed = commentBody.match(regex);
 
                 if ( parameters.debug == "true" ){
                   core.info('#### DEBUG START ####')
