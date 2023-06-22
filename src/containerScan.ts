@@ -8,7 +8,7 @@ import { env } from "process";
 export async function ContainerScan(parameters:any) {
     console.log(`'Path :  ${parameters.path}'`)
     let curlCommandOutput
-        try {
+        //try {
             let ext 
             env.VERACODE_API_KEY_ID= parameters.vid
             env.VERACODE_API_KEY_SECRET= parameters.vkey
@@ -99,10 +99,10 @@ export async function ContainerScan(parameters:any) {
                   core.info('Veracode Container Scanning passed')
                 }
             }
-        } 
-        catch (ex:any){
-            curlCommandOutput = ex.stdout.toString()
-            core.info(`${curlCommandOutput}`)
-        } 
+        //} 
+        //catch (ex:any){
+        //    curlCommandOutput = ex.stdout.toString()
+        //    core.info(`${curlCommandOutput}`)
+        //} 
 
 }
