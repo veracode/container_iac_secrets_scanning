@@ -98,7 +98,7 @@ export async function ContainerScan(parameters:any) {
             if ( parameters.fail_build == "true" ){
                 //const policyPassed = commentBody.substring('"policy-passed":')
                 const regex = /\"policy-passed\": (false|pass)/g;
-                const policyPassed = commentBody.match(regex);
+                const policyPassed:string = commentBody.match(regex).toString;
                 core.info('policyPassed: '+policyPassed)
                 const policyPassedString = policyPassed.split(":")
 
