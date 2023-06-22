@@ -27,7 +27,7 @@ export async function ContainerScan(parameters:any) {
                 //store output files as artifacts
                 const artifactClient = artifact.create()
                 const artifactName = 'Veracode Container Scanning Results';
-                const files = [`results${parameters.output}`];
+                const files = [parameters.output];
                 
                 const rootDirectory = process.cwd()
                 const options = {
