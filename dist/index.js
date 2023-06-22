@@ -16368,6 +16368,7 @@ const artifact = __importStar(__nccwpck_require__(1413));
 const github = __importStar(__nccwpck_require__(3134));
 const child_process_1 = __nccwpck_require__(2081);
 const process_1 = __nccwpck_require__(7282);
+const fs = __importStar(__nccwpck_require__(7147));
 function ContainerScan(parameters) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
@@ -16398,11 +16399,19 @@ function ContainerScan(parameters) {
             curlCommandOutput = (0, child_process_1.execSync)(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format}`);
             core.info(`${curlCommandOutput}`);
         }
+        let results = "";
+        if (fs.existsSync(parameters.output)) {
+            console.log(`Processing file: ${parameters.output}`);
+            results = JSON.parse(fs.readFileSync(parameters.output, 'utf8'));
+        }
+        else {
+            throw `Unable to locate scan results file: ${parameters.output}`;
+        }
         if (parameters.debug == "true") {
             core.info('#### DEBUG START ####');
             core.info('containerScan.ts');
             core.info('results');
-            core.info(parameters.output);
+            core.info(results);
             core.info('#### DEBUG END ####');
         }
         let commentBody = '';
@@ -16417,7 +16426,7 @@ function ContainerScan(parameters) {
                 //creating the body for the comment
                 commentBody = 'Veracode Scan Summary';
                 commentBody = commentBody + '---\n<details><summary>details</summary><p>\n---';
-                commentBody = commentBody + parameters.output;
+                commentBody = commentBody + results;
                 commentBody = commentBody + '---\n</p></details>\n===';
                 if (parameters.debug == "true") {
                     core.info('#### DEBUG START ####');

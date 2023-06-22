@@ -4,6 +4,7 @@ import * as artifact from '@actions/artifact'
 import * as github from "@actions/github"
 import { execSync } from "child_process";
 import { env } from "process";
+import * as fs from 'fs';
 
 export async function ContainerScan(parameters:any) {
     let curlCommandOutput:any
@@ -40,11 +41,20 @@ export async function ContainerScan(parameters:any) {
                 core.info(`${curlCommandOutput}`)
             }
 
+            let results:any = ""
+
+            if(fs.existsSync(parameters.output)) {
+              console.log(`Processing file: ${parameters.output}`);
+              results = JSON.parse(fs.readFileSync(parameters.output, 'utf8'));
+            } else {
+              throw `Unable to locate scan results file: ${parameters.output}`;
+            }
+
             if ( parameters.debug == "true" ){
               core.info('#### DEBUG START ####')
               core.info('containerScan.ts')
               core.info('results')
-              core.info(parameters.output)
+              core.info(results)
               core.info('#### DEBUG END ####')
             }
 
@@ -64,7 +74,7 @@ export async function ContainerScan(parameters:any) {
                 //creating the body for the comment
                 commentBody = 'Veracode Scan Summary'
                 commentBody = commentBody+'---\n<details><summary>details</summary><p>\n---'
-                commentBody = commentBody + parameters.output
+                commentBody = commentBody + results
                 commentBody = commentBody+'---\n</p></details>\n==='
 
                 if ( parameters.debug == "true" ){
