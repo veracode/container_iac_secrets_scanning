@@ -16450,16 +16450,17 @@ function ContainerScan(parameters) {
             //const policyPassed = commentBody.substring('"policy-passed":')
             const regex = /\"policy-passed\": (false|pass)/g;
             const policyPassed = commentBody.match(regex);
+            const policyPassedString = policyPassed.split(":");
             if (parameters.debug == "true") {
                 core.info('#### DEBUG START ####');
                 core.info('containerScan.ts');
                 core.info('full output string');
                 core.info(commentBody);
                 core.info('Fail Build?');
-                core.info(policyPassed);
+                core.info(policyPassedString[1]);
                 core.info('#### DEBUG END ####');
             }
-            if (policyPassed == "false") {
+            if (policyPassedString[1] == "false") {
                 core.info('Veracode Container Scanning failed');
                 core.setFailed('Veracode Container Scanning failed');
             }
