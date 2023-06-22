@@ -16450,6 +16450,7 @@ function ContainerScan(parameters) {
             //const policyPassed = commentBody.substring('"policy-passed":')
             const regex = /\"policy-passed\": (false|pass)/g;
             const policyPassed = commentBody.match(regex);
+            core.info('policyPassed: ' + policyPassed);
             const policyPassedString = policyPassed.split(":");
             if (parameters.debug == "true") {
                 core.info('#### DEBUG START ####');
