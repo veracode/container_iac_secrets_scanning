@@ -6,7 +6,6 @@ import { execSync } from "child_process";
 import { env } from "process";
 
 export async function ContainerScan(parameters:any) {
-    console.log(`'Path :  ${parameters.path}'`)
     let curlCommandOutput
         //try {
             let ext 

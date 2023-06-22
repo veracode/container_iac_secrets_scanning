@@ -16371,7 +16371,6 @@ const process_1 = __nccwpck_require__(7282);
 function ContainerScan(parameters) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
-        console.log(`'Path :  ${parameters.path}'`);
         let curlCommandOutput;
         //try {
         let ext;
