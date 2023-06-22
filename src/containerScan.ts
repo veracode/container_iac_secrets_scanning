@@ -85,12 +85,12 @@ export async function ContainerScan(parameters:any) {
                 if ( parameters.debug == "true" ){
                   core.info('#### DEBUG START ####')
                   core.info('containerScan.ts')
-                  core.info('Fail Build?t')
+                  core.info('Fail Build?')
                   core.info(policyPassed)
                   core.info('#### DEBUG END ####')
                 }
 
-                if ( policyPassed == "fail" ){
+                if ( policyPassed == "false" ){
                   core.info('Veracode Container Scanning failed')
                   core.setFailed('Veracode Container Scanning failed')
                 }
