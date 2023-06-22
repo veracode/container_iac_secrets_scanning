@@ -16449,19 +16449,19 @@ function ContainerScan(parameters) {
         if (parameters.fail_build == "true") {
             //const policyPassed = commentBody.substring('"policy-passed":')
             const regex = /\"policy-passed\": (false|pass)/g;
-            const policyPassed = commentBody.match(regex);
+            const policyPassed = JSON.stringify(commentBody.match(regex));
             core.info('policyPassed: ' + policyPassed);
-            const policyPassedString = policyPassed.search("false");
+            const policyPassedString = policyPassed.split(":");
             if (parameters.debug == "true") {
                 core.info('#### DEBUG START ####');
                 core.info('containerScan.ts');
                 core.info('full output string');
                 //core.info(commentBody)
                 core.info('Fail Build?');
-                core.info(policyPassedString);
+                core.info(policyPassedString[1]);
                 core.info('#### DEBUG END ####');
             }
-            if (policyPassedString > 0) {
+            if (policyPassedString[1] > "false") {
                 core.info('Veracode Container Scanning failed');
                 core.setFailed('Veracode Container Scanning failed');
             }
