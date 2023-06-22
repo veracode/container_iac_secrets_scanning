@@ -4,18 +4,15 @@
   "description": "",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json"
+    "build": "ncc build ./src/index.ts "
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/5l1D3R/veracode-container-scanning-action.git"
   },
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/5l1D3R/veracode-container-scanning-action/issues"
-  },
-  "homepage": "https://github.com/5l1D3R/veracode-container-scanning-action#readme",
+  "author": "Veracode",
+  "license": "MIT",
+
   "devDependencies": {
     "@types/node": "^18.15.7",
     "typescript": "^5.0.2"
