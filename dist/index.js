@@ -16411,7 +16411,7 @@ function ContainerScan(parameters) {
             core.info('#### DEBUG START ####');
             core.info('containerScan.ts');
             core.info('results');
-            core.info(results);
+            //core.info(results)
             core.info('#### DEBUG END ####');
         }
         //creating the body for the comment
@@ -16423,7 +16423,7 @@ function ContainerScan(parameters) {
             core.info('#### DEBUG START ####');
             core.info('containerScan.ts');
             core.info('comment Body');
-            core.info(commentBody);
+            //core.info(commentBody)
             core.info('#### DEBUG END ####');
         }
         if (parameters.isPR >= 1) {
@@ -16455,7 +16455,7 @@ function ContainerScan(parameters) {
                 core.info('#### DEBUG START ####');
                 core.info('containerScan.ts');
                 core.info('full output string');
-                core.info(commentBody);
+                //core.info(commentBody)
                 core.info('Fail Build?');
                 core.info(policyPassedString[1]);
                 core.info('#### DEBUG END ####');

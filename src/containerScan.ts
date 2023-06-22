@@ -54,7 +54,7 @@ export async function ContainerScan(parameters:any) {
               core.info('#### DEBUG START ####')
               core.info('containerScan.ts')
               core.info('results')
-              core.info(results)
+              //core.info(results)
               core.info('#### DEBUG END ####')
             }
 
@@ -68,7 +68,7 @@ export async function ContainerScan(parameters:any) {
               core.info('#### DEBUG START ####')
               core.info('containerScan.ts')
               core.info('comment Body')
-              core.info(commentBody)
+              //core.info(commentBody)
               core.info('#### DEBUG END ####')
             }
 
@@ -105,7 +105,7 @@ export async function ContainerScan(parameters:any) {
                   core.info('#### DEBUG START ####')
                   core.info('containerScan.ts')
                   core.info('full output string')
-                  core.info(commentBody)
+                  //core.info(commentBody)
                   core.info('Fail Build?')
                   core.info(policyPassedString[1])
                   core.info('#### DEBUG END ####')
