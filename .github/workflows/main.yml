@@ -1,0 +1,27 @@
+on:
+  workflow_dispatch:
+    
+
+jobs:
+
+  container-scan:
+      runs-on: ubuntu-latest
+      name: container scan
+
+      steps:
+        - name: checkout
+          uses: actions/checkout@v2
+
+        - name: container-scan action step
+          id: container-scan
+          uses: ./
+          with:
+            vid: ${{ secrets.VID }}
+            vkey: ${{ secrets.VKEY }}
+            command: "scan" 
+            type: "directory"
+            source: "./"
+            format: "json"
+            output: "results.json"
+            debug: 1
+            fail_build: true

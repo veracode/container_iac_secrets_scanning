@@ -1,5 +1,5 @@
-name : 'Veracode Container Scanning GitHub Action'
-author : 'Greg'
+name: 'Veracode Container Scanning GitHub Action'
+author: 'Veracode'
 
 inputs:
   vid:
@@ -8,22 +8,38 @@ inputs:
   vkey:
     description : 'vkey'
     required: true
-  path:
-    description : 'path to analyze'
+  github-token:
+    description: 'GitHub token to access the repo'
+    default: ${{ github.token }}
+    required: true
+  command:
+    description : 'Scan command to run (scan|sbon)'
+    required: true
+    default: 'scan'
+  source:
+    description : 'location of the scan source for the target type.'
     required: true
     default: '.'
   format:
-    description: 'output file format'
+    description: 'format in which to output the scan results. Enter one of the following values (json|cyclondx|table)'
     required: true
-    default: 'scan'
-  scanType:
-    description: 'scan type'
+    default: 'json'
+  type:
+    description: 'Which tpe of scan to run (image|archive|repo|directory)'
     required: true
-    defaut: 'table'
-  export:
-    description: 'export to file'
-    required: true
-    defaut: 'false'
+    default: 'table'
+  output:
+    description: 'Output file to store'
+    required: false
+    default: 'results.json'
+  debug:
+    description: 'debug'
+    required: false
+    default: 'false'
+  fail_build:
+    description: 'fail_build'
+    required: false
+    default: 'false'
 runs:
   using: 'node16'
   main: 'dist/index.js'

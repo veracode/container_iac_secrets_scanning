@@ -5,23 +5,21 @@ import * as github from "@actions/github"
 import { execSync } from "child_process";
 import { env } from "process";
 
-export async function ContainerScan(vid:string, vkey:string, path:string, format:string, scanType:string, exportfile:string){
-    console.log(`'Path :  ${path}'`)
+export async function ContainerScan(parameters:any) {
+    console.log(`'Path :  ${parameters.path}'`)
     let curlCommandOutput
         try {
             let ext 
-            env.VERACODE_API_KEY_ID= vid
-            env.VERACODE_API_KEY_SECRET= vkey
+            env.VERACODE_API_KEY_ID= parameters.vid
+            env.VERACODE_API_KEY_SECRET= parameters.vkey
             
-            if(format=='json')
-              ext='.json'
-            if(format=='table')
-              ext='.txt'
-            if(format=='cyclonedx') 
-              ext='.xml'
+
+            //check if format corresponds to the output file extension
+            //do something
+
             let scanCommand
-            if(exportfile='true') {
-                scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${scanType} --source ${path} --type directory --format ${format} --output results${ext} `
+            if(parameters.output != '') {
+                scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output} `
                 core.info('Scan command :' + scanCommand)
                 curlCommandOutput = execSync(scanCommand)
                 core.info(`${curlCommandOutput}`)
@@ -29,7 +27,7 @@ export async function ContainerScan(vid:string, vkey:string, path:string, format
                 //store output files as artifacts
                 const artifactClient = artifact.create()
                 const artifactName = 'Veracode Container Scanning Results';
-                const files = [`results${ext}`];
+                const files = [`results${parameters.output}`];
                 
                 const rootDirectory = process.cwd()
                 const options = {
@@ -39,12 +37,72 @@ export async function ContainerScan(vid:string, vkey:string, path:string, format
                 
                 }
             else{
-                curlCommandOutput = execSync(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${scanType} --source ${path} --type directory --format ${format}`)
+                curlCommandOutput = execSync(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format}`)
                 core.info(`${curlCommandOutput}`)
+            }
+
+            let commentBody:any = ''
+
+            if ( parameters.isPR >= 1 ){
+              core.info("This run is part of a PR, should add some PR comment")
+
+              try {
+                const octokit = github.getOctokit(parameters.token);
+
+                const context = github.context
+                const repository:any = process.env.GITHUB_REPOSITORY
+                const repo = repository.split("/");
+                const commentID:any = context.payload.pull_request?.number;
+
+                //creating the body for the comment
+                commentBody = 'Veracode Scan Summary'
+                commentBody = commentBody+'---\n<details><summary>details</summary><p>\n---'
+                commentBody = commentBody + curlCommandOutput
+                commentBody = commentBody+'---\n</p></details>\n==='
+
+                if ( parameters.debug == "true" ){
+                  core.info('#### DEBUG START ####')
+                  core.info('containerScan.ts')
+                  core.info('PR comment')
+                  core.info(commentBody)
+                  core.info('#### DEBUG END ####')
+                }
+    
+                const { data: comment } = await octokit.rest.issues.createComment({
+                    owner: repo[0],
+                    repo: repo[1],
+                    issue_number: commentID,
+                    body: commentBody,
+                });
+                core.info('Adding scan results as comment to PR #'+commentID)
+              } catch (error:any) {
+                  core.info(error);
+              }
+            }
+
+            if ( parameters.fail_build == "true" ){
+                const policyPassed = commentBody.substring("policy-passed")
+
+                if ( parameters.debug == "true" ){
+                  core.info('#### DEBUG START ####')
+                  core.info('containerScan.ts')
+                  core.info('Fail Build?t')
+                  core.info(policyPassed)
+                  core.info('#### DEBUG END ####')
+                }
+
+                if ( policyPassed == "fail" ){
+                  core.info('Veracode Container Scanning failed')
+                  core.setFailed('Veracode Container Scanning failed')
+                }
+                else {
+                  core.info('Veracode Container Scanning passed')
+                }
             }
         } 
         catch (ex:any){
             curlCommandOutput = ex.stdout.toString()
+            core.info(`${curlCommandOutput}`)
         } 
 
 }
