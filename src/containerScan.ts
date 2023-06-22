@@ -6,7 +6,7 @@ import { execSync } from "child_process";
 import { env } from "process";
 
 export async function ContainerScan(parameters:any) {
-    let curlCommandOutput
+    let curlCommandOutput:any
         //try {
             let ext 
             env.VERACODE_API_KEY_ID= parameters.vid
@@ -38,6 +38,14 @@ export async function ContainerScan(parameters:any) {
             else{
                 curlCommandOutput = execSync(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format}`)
                 core.info(`${curlCommandOutput}`)
+            }
+
+            if ( parameters.debug == "true" ){
+              core.info('#### DEBUG START ####')
+              core.info('containerScan.ts')
+              core.info('curlCommandOutput')
+              core.info(curlCommandOutput)
+              core.info('#### DEBUG END ####')
             }
 
             let commentBody:any = ''

@@ -16398,6 +16398,13 @@ function ContainerScan(parameters) {
             curlCommandOutput = (0, child_process_1.execSync)(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format}`);
             core.info(`${curlCommandOutput}`);
         }
+        if (parameters.debug == "true") {
+            core.info('#### DEBUG START ####');
+            core.info('containerScan.ts');
+            core.info('curlCommandOutput');
+            core.info(curlCommandOutput);
+            core.info('#### DEBUG END ####');
+        }
         let commentBody = '';
         if (parameters.isPR >= 1) {
             core.info("This run is part of a PR, should add some PR comment");
