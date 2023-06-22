@@ -80,11 +80,13 @@ export async function ContainerScan(parameters:any) {
             }
 
             if ( parameters.fail_build == "true" ){
-                const policyPassed = commentBody.substring("policy-passed")
+                const policyPassed = commentBody.substring('"policy-passed":')
 
                 if ( parameters.debug == "true" ){
                   core.info('#### DEBUG START ####')
                   core.info('containerScan.ts')
+                  core.info('full output string')
+                  core.info(commentBody)
                   core.info('Fail Build?')
                   core.info(policyPassed)
                   core.info('#### DEBUG END ####')
