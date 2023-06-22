@@ -16414,7 +16414,18 @@ function ContainerScan(parameters) {
             core.info(results);
             core.info('#### DEBUG END ####');
         }
-        let commentBody = '';
+        //creating the body for the comment
+        let commentBody = 'Veracode Scan Summary';
+        commentBody = commentBody + '---\n<details><summary>details</summary><p>\n---';
+        commentBody = commentBody + results;
+        commentBody = commentBody + '---\n</p></details>\n===';
+        if (parameters.debug == "true") {
+            core.info('#### DEBUG START ####');
+            core.info('containerScan.ts');
+            core.info('comment Body');
+            core.info(commentBody);
+            core.info('#### DEBUG END ####');
+        }
         if (parameters.isPR >= 1) {
             core.info("This run is part of a PR, should add some PR comment");
             try {
@@ -16423,18 +16434,6 @@ function ContainerScan(parameters) {
                 const repository = process.env.GITHUB_REPOSITORY;
                 const repo = repository.split("/");
                 const commentID = (_a = context.payload.pull_request) === null || _a === void 0 ? void 0 : _a.number;
-                //creating the body for the comment
-                commentBody = 'Veracode Scan Summary';
-                commentBody = commentBody + '---\n<details><summary>details</summary><p>\n---';
-                commentBody = commentBody + results;
-                commentBody = commentBody + '---\n</p></details>\n===';
-                if (parameters.debug == "true") {
-                    core.info('#### DEBUG START ####');
-                    core.info('containerScan.ts');
-                    core.info('comment Body');
-                    core.info(commentBody);
-                    core.info('#### DEBUG END ####');
-                }
                 const { data: comment } = yield octokit.rest.issues.createComment({
                     owner: repo[0],
                     repo: repo[1],
