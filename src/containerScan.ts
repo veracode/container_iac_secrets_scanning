@@ -43,8 +43,8 @@ export async function ContainerScan(parameters:any) {
             if ( parameters.debug == "true" ){
               core.info('#### DEBUG START ####')
               core.info('containerScan.ts')
-              core.info('curlCommandOutput')
-              core.info(curlCommandOutput)
+              core.info('results')
+              core.info(parameters.output)
               core.info('#### DEBUG END ####')
             }
 
@@ -64,7 +64,7 @@ export async function ContainerScan(parameters:any) {
                 //creating the body for the comment
                 commentBody = 'Veracode Scan Summary'
                 commentBody = commentBody+'---\n<details><summary>details</summary><p>\n---'
-                commentBody = commentBody + curlCommandOutput
+                commentBody = commentBody + parameters.output
                 commentBody = commentBody+'---\n</p></details>\n==='
 
                 if ( parameters.debug == "true" ){
