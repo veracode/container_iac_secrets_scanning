@@ -16415,7 +16415,7 @@ function ContainerScan(parameters) {
                 if (parameters.debug == "true") {
                     core.info('#### DEBUG START ####');
                     core.info('containerScan.ts');
-                    core.info('PR comment');
+                    core.info('comment Body');
                     core.info(commentBody);
                     core.info('#### DEBUG END ####');
                 }
