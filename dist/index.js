@@ -16402,7 +16402,7 @@ function ContainerScan(parameters) {
         let results = "";
         if (fs.existsSync(parameters.output)) {
             console.log(`Processing file: ${parameters.output}`);
-            results = JSON.parse(fs.readFileSync(parameters.output, 'utf8'));
+            results = fs.readFileSync(parameters.output, 'utf8');
         }
         else {
             throw `Unable to locate scan results file: ${parameters.output}`;
