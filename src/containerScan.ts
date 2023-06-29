@@ -27,7 +27,7 @@ export async function ContainerScan(parameters:any) {
                   core.info('#### DEBUG END ####')
                 }
               }
-              else if ( parameters.format == "json" && parameters.output.include("txt") ){
+              else if ( parameters.format == "json" && parameters.output != "results.json" ){
                 core.info('You are trying to create json based output, but specified text to be the output. The output will be changed to a json file!')
                 parameters.output = "results.json"
                 if ( parameters.debug == "true" ){
