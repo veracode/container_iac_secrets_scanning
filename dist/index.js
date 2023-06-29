@@ -16674,9 +16674,41 @@ const artifact = __importStar(__nccwpck_require__(1413));
 const child_process_1 = __nccwpck_require__(2081);
 function run_cli(command, parameters) {
     return __awaiter(this, void 0, void 0, function* () {
-        let scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${command} `;
-        core.info('Scan command :' + scanCommand);
-        let curlCommandOutput = (0, child_process_1.execSync)(scanCommand);
+        let curlCommandOutput = '';
+        function isVeracodeCliAvailable(command) {
+            return new Promise((resolve) => {
+                (0, child_process_1.exec)(`command -v ${command}`, (error, stdout) => {
+                    if (error) {
+                        resolve(false);
+                    }
+                    else {
+                        resolve(stdout.trim() !== '');
+                    }
+                });
+            });
+        }
+        isVeracodeCliAvailable('veracode')
+            .then((isAvailable) => {
+            if (isAvailable) {
+                let scanCommand = ` ./veracode ${command} `;
+                let curlCommandOutput = (0, child_process_1.execSync)(scanCommand);
+                core.info('Scan command :' + scanCommand);
+            }
+            else {
+                (0, child_process_1.execSync)('curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode configure');
+                let scanCommand = ` ./veracode ${command} `;
+                let curlCommandOutput = (0, child_process_1.execSync)(scanCommand);
+                core.info('Scan command :' + scanCommand);
+            }
+        })
+            .catch((error) => {
+            console.error('An error occurred:', error);
+        });
+        /*
+            let scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${command} `
+            core.info('Scan command :' + scanCommand)
+            let curlCommandOutput = execSync(scanCommand)
+        */
         if (parameters.debug == "true") {
             core.info('#### DEBUG START ####');
             core.info('run_command.ts - command output');
