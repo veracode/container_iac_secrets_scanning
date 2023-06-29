@@ -5,18 +5,86 @@ import * as github from "@actions/github"
 import { execSync } from "child_process";
 import { env } from "process";
 import * as fs from 'fs';
+import { run_cli } from "./run_command";
 
 export async function ContainerScan(parameters:any) {
     let curlCommandOutput:any
-        //try {
-            let ext 
             env.VERACODE_API_KEY_ID= parameters.vid
             env.VERACODE_API_KEY_SECRET= parameters.vkey
             
+            if ( parameters.command == "scan" ){
+              //run this when oputput is requires and we may create issues and/or PR decoration
+
+
+              //check if format corresponds to the output file extension
+              if ( parameters.format == "table" && parameters.output == "results.json" ){
+                core.info('You are trying to create text based output, but specified json to be the output. The output will be changed to a text file!')
+                parameters.output = "results.txt"
+                if ( parameters.debug == "true" ){
+                  core.info('#### DEBUG START ####')
+                  core.info('containerScan.ts - check for text output')
+                  core.info(parameters.output)
+                  core.info('#### DEBUG END ####')
+                }
+              }
+              else if ( parameters.format == "json" && parameters.output.include("txt") ){
+                core.info('You are trying to create json based output, but specified text to be the output. The output will be changed to a json file!')
+                parameters.output = "results.json"
+                if ( parameters.debug == "true" ){
+                  core.info('#### DEBUG START ####')
+                  core.info('containerScan.ts - check for json output')
+                  core.info(parameters.output)
+                  core.info('#### DEBUG END ####')
+                }
+              }
+
+              //generate command to run
+              let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`
+              
+              if ( parameters.debug == "true" ){
+                core.info('#### DEBUG START ####')
+                core.info('containerScan.ts - original scan command')
+                core.info(scanCommandOriginal)
+                core.info('#### DEBUG END ####')
+              }
+
+              //run the original command
+              //run_cli(scanCommand, parameters)
+
+
+              //always run this to generate text output
+              if ( parameters.output == "results.json" ){
+                parameters.output = "results.txt"
+                let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`
+                //run_cli(scanCommand, parameters)
+              }
+              else {
+                let scanCommandText = scanCommandOriginal
+              }
+
+              async function runParallelFunctions(): Promise<void> {
+                let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`
+                const promises = [run_cli(scanCommandOriginal,parameters), run_cli(scanCommandText,parameters)];
+                await Promise.all(promises);
+                console.log('Both functions completed in parallel');
+              }
+
+              runParallelFunctions().catch((error) => {
+                console.error('An error occurred:', error);
+              });
+
+            }
+            else if ( parameters.command == "sbom" ){
+
+            }
+
+
 
             //check if format corresponds to the output file extension
             //do something
 
+
+/*
             let scanCommand
             if(parameters.output != '') {
                 scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output} `
@@ -26,7 +94,7 @@ export async function ContainerScan(parameters:any) {
     
                 //store output files as artifacts
                 const artifactClient = artifact.create()
-                const artifactName = 'Veracode Container Scanning Results';
+                const artifactName = 'Veracode Container IaC Secrets Scanning Results';
                 const files = [parameters.output];
                 
                 const rootDirectory = process.cwd()
@@ -59,7 +127,7 @@ export async function ContainerScan(parameters:any) {
             }
 
             //creating the body for the comment
-            let commentBody:string = 'Veracode Scan Summary'
+            let commentBody:string = 'Veracode Container/IaC/Sercets Scan Summary'
             commentBody = commentBody+'---\n<details><summary>details</summary><p>\n---'
             commentBody = commentBody + results
             commentBody = commentBody+'---\n</p></details>\n==='
@@ -121,10 +189,7 @@ export async function ContainerScan(parameters:any) {
                   core.info('Veracode Container Scanning passed')
                 }
             }
-        //} 
-        //catch (ex:any){
-        //    curlCommandOutput = ex.stdout.toString()
-        //    core.info(`${curlCommandOutput}`)
-        //} 
+*/
+          
 
 }
