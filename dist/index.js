@@ -16409,10 +16409,10 @@ function ContainerScan(parameters) {
                 let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format table --output results.txt`;
                 function runParallelFunctions() {
                     return __awaiter(this, void 0, void 0, function* () {
-                        let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`;
+                        let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output results.txt`;
                         const promises = [(0, run_command_1.run_cli)(scanCommandOriginal, parameters.debug, 'results.json'), (0, run_command_1.run_cli)(scanCommandText, parameters.debug, 'results.txt'), (0, run_command_1.run_cli)(sbom_cyclonedx_xml, parameters.debug, sbom_cyclonedx_xml_results_file), (0, run_command_1.run_cli)(sbom_cyclonedx_json, parameters.debug, sbom_cyclonedx_json_results_file), (0, run_command_1.run_cli)(sbom_spdx_tag_value, parameters.debug, sbom_spdx_tag_value_results_file), (0, run_command_1.run_cli)(sbom_spdx_json, parameters.debug, sbom_spdx_json_results_file), (0, run_command_1.run_cli)(sbom_github, parameters.debug, sbom_github_results_file)];
                         yield Promise.all(promises);
-                        console.log('Both functions completed in parallel');
+                        core.info('All functions completed in parallel');
                     });
                 }
                 //run all commands in parallel
@@ -16429,7 +16429,7 @@ function ContainerScan(parameters) {
                         let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`;
                         const promises = [(0, run_command_1.run_cli)(scanCommandOriginal, parameters.debug, 'results.txt'), (0, run_command_1.run_cli)(sbom_cyclonedx_xml, parameters.debug, sbom_cyclonedx_xml_results_file), (0, run_command_1.run_cli)(sbom_cyclonedx_json, parameters.debug, sbom_cyclonedx_json_results_file), (0, run_command_1.run_cli)(sbom_spdx_tag_value, parameters.debug, sbom_spdx_tag_value_results_file), (0, run_command_1.run_cli)(sbom_spdx_json, parameters.debug, sbom_spdx_json_results_file), (0, run_command_1.run_cli)(sbom_github, parameters.debug, sbom_github_results_file)];
                         yield Promise.all(promises);
-                        console.log('Both functions completed in parallel');
+                        core.info('All functions completed in parallel');
                     });
                 }
                 //run all commands in parallel
