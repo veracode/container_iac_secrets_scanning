@@ -1,8 +1,7 @@
 import * as core from "@actions/core"
 import * as artifact from '@actions/artifact'
 import { execSync,exec } from "child_process";
-import { env } from "process";
-import * as fs from 'fs';
+
 
 export async function run_cli(command:string, debug:any, resultsfile:any) {
 
@@ -16,10 +15,16 @@ export async function run_cli(command:string, debug:any, resultsfile:any) {
         core.info('run_command.ts - command output')
         core.info('command output : '+curlCommandOutput)
         core.info('#### DEBUG END ####')
-      }
+    }
     core.info(`${curlCommandOutput}`)
 
     //store output files as artifacts
+    if ( debug == "true" ){
+        core.info('#### DEBUG START ####')
+        core.info('run_command.ts - Arifact')
+        core.info('Artifact name : '+resultsfile)
+        core.info('#### DEBUG END ####')
+    }
     const artifactClient = artifact.create()
     const artifactName = 'Veracode Container IaC Secrets Scanning Results';
     const files = [resultsfile];

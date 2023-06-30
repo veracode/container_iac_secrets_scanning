@@ -63,7 +63,9 @@ export async function ContainerScan(parameters:any) {
         await Promise.all(promises);
         console.log('Both functions completed in parallel');
       }
-
+      runParallelFunctions().catch((error) => {
+        console.error('An error occurred:', error);
+      });
     }
     else {
       async function runParallelFunctions(): Promise<void> {
@@ -72,18 +74,12 @@ export async function ContainerScan(parameters:any) {
         await Promise.all(promises);
         console.log('Both functions completed in parallel');
       }
+      runParallelFunctions().catch((error) => {
+        console.error('An error occurred:', error);
+      });
     }
 
-    async function runParallelFunctions(): Promise<void> {
-      let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`
-      const promises = [run_cli(scanCommandOriginal,parameters.debug,'results.json'), run_cli(scanCommandText,parameters.debug,'results.txt')];
-      await Promise.all(promises);
-      console.log('Both functions completed in parallel');
-    }
-
-    runParallelFunctions().catch((error) => {
-      console.error('An error occurred:', error);
-    });
+    
 
     
 //Start here for results outpout

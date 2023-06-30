@@ -16414,6 +16414,9 @@ function ContainerScan(parameters) {
                         console.log('Both functions completed in parallel');
                     });
                 }
+                runParallelFunctions().catch((error) => {
+                    console.error('An error occurred:', error);
+                });
             }
             else {
                 function runParallelFunctions() {
@@ -16424,18 +16427,10 @@ function ContainerScan(parameters) {
                         console.log('Both functions completed in parallel');
                     });
                 }
-            }
-            function runParallelFunctions() {
-                return __awaiter(this, void 0, void 0, function* () {
-                    let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`;
-                    const promises = [(0, run_command_1.run_cli)(scanCommandOriginal, parameters.debug, 'results.json'), (0, run_command_1.run_cli)(scanCommandText, parameters.debug, 'results.txt')];
-                    yield Promise.all(promises);
-                    console.log('Both functions completed in parallel');
+                runParallelFunctions().catch((error) => {
+                    console.error('An error occurred:', error);
                 });
             }
-            runParallelFunctions().catch((error) => {
-                console.error('An error occurred:', error);
-            });
             //Start here for results outpout
             let results = "";
             if (fs.existsSync('results.txt')) {
@@ -16723,6 +16718,12 @@ function run_cli(command, debug, resultsfile) {
         }
         core.info(`${curlCommandOutput}`);
         //store output files as artifacts
+        if (debug == "true") {
+            core.info('#### DEBUG START ####');
+            core.info('run_command.ts - Arifact');
+            core.info('Artifact name : ' + resultsfile);
+            core.info('#### DEBUG END ####');
+        }
         const artifactClient = artifact.create();
         const artifactName = 'Veracode Container IaC Secrets Scanning Results';
         const files = [resultsfile];
