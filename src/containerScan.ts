@@ -20,15 +20,16 @@ export async function ContainerScan(parameters:any) {
   //run this when oputput is requires and we may create issues and/or PR decorations
   if ( parameters.command == "scan" ){
 
-    if ( parameters.debug == "true" ){
-      core.info('#### DEBUG START ####')
-      core.info('containerScan.ts - check for text output')
-      core.info(parameters.output)
-      core.info('#### DEBUG END ####')
+    let results_file = ""
+    if ( parameters.format == "json" ){
+      let results_file = 'results.json'
+    }
+    else {
+      let results_file = 'results.txt'
     }
 
     //generate command to run
-    let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`
+    let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output results_file`
     
     if ( parameters.debug == "true" ){
       core.info('#### DEBUG START ####')
@@ -55,8 +56,9 @@ export async function ContainerScan(parameters:any) {
 
 
     //always run this to generate text output
-    if ( parameters.output == "results.json" ){
+    if ( parameters.format == "json" ){
       async function runParallelFunctions(): Promise<void> {
+        //also run the scan to get text output
         let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format table --output results.txt`
         const promises = [run_cli(scanCommandOriginal,parameters.debug,'results.json'), run_cli(scanCommandText,parameters.debug,'results.txt'), run_cli(sbom_cyclonedx_xml,parameters.debug,sbom_cyclonedx_xml_results_file), run_cli(sbom_cyclonedx_json,parameters.debug,sbom_cyclonedx_json_results_file), run_cli(sbom_spdx_tag_value,parameters.debug,sbom_spdx_tag_value_results_file), run_cli(sbom_spdx_json,parameters.debug,sbom_spdx_json_results_file), run_cli(sbom_github,parameters.debug,sbom_github_results_file)];
         await Promise.all(promises);
@@ -74,7 +76,6 @@ export async function ContainerScan(parameters:any) {
     }
     else {
       async function runParallelFunctions(): Promise<void> {
-        let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`
         const promises = [run_cli(scanCommandOriginal,parameters.debug,'results.txt'), run_cli(sbom_cyclonedx_xml,parameters.debug,sbom_cyclonedx_xml_results_file), run_cli(sbom_cyclonedx_json,parameters.debug,sbom_cyclonedx_json_results_file), run_cli(sbom_spdx_tag_value,parameters.debug,sbom_spdx_tag_value_results_file), run_cli(sbom_spdx_json,parameters.debug,sbom_spdx_json_results_file), run_cli(sbom_github,parameters.debug,sbom_github_results_file)];
         await Promise.all(promises);
         core.info('All functions completed in parallel');
@@ -105,14 +106,6 @@ export async function ContainerScan(parameters:any) {
       results = fs.readFileSync('results.txt', 'utf8');
     } else {
       throw `Unable to locate scan results file: results.txt`;
-    }
-
-    if ( parameters.debug == "true" ){
-      core.info('#### DEBUG START ####')
-      core.info('containerScan.ts')
-      core.info('results')
-      //core.info(results)
-      core.info('#### DEBUG END ####')
     }
 
     //creating the body for the comment
@@ -185,7 +178,12 @@ export async function ContainerScan(parameters:any) {
   }
   else if ( parameters.command == "sbom" ){
     // This is where only the SBOM part is runnuing
-
+    if ( parameters.debug == "true" ){
+      core.info('#### DEBUG START ####')
+      core.info('containerScan.ts')
+      core.info('SBOM generation part')
+      core.info('#### DEBUG END ####')
+    }
     
     //set the correct filename based on the format
     let filename = ""

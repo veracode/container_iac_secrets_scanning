@@ -16379,14 +16379,15 @@ function ContainerScan(parameters) {
         process_1.env.VERACODE_API_KEY_SECRET = parameters.vkey;
         //run this when oputput is requires and we may create issues and/or PR decorations
         if (parameters.command == "scan") {
-            if (parameters.debug == "true") {
-                core.info('#### DEBUG START ####');
-                core.info('containerScan.ts - check for text output');
-                core.info(parameters.output);
-                core.info('#### DEBUG END ####');
+            let results_file = "";
+            if (parameters.format == "json") {
+                let results_file = 'results.json';
+            }
+            else {
+                let results_file = 'results.txt';
             }
             //generate command to run
-            let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`;
+            let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output results_file`;
             if (parameters.debug == "true") {
                 core.info('#### DEBUG START ####');
                 core.info('containerScan.ts - original scan command');
@@ -16405,9 +16406,10 @@ function ContainerScan(parameters) {
             let sbom_github = `sbom --source ${parameters.source} --type ${parameters.type} --format github --output sbom_github.json`;
             let sbom_github_results_file = 'sbom_github.json';
             //always run this to generate text output
-            if (parameters.output == "results.json") {
+            if (parameters.format == "json") {
                 function runParallelFunctions() {
                     return __awaiter(this, void 0, void 0, function* () {
+                        //also run the scan to get text output
                         let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format table --output results.txt`;
                         const promises = [(0, run_command_1.run_cli)(scanCommandOriginal, parameters.debug, 'results.json'), (0, run_command_1.run_cli)(scanCommandText, parameters.debug, 'results.txt'), (0, run_command_1.run_cli)(sbom_cyclonedx_xml, parameters.debug, sbom_cyclonedx_xml_results_file), (0, run_command_1.run_cli)(sbom_cyclonedx_json, parameters.debug, sbom_cyclonedx_json_results_file), (0, run_command_1.run_cli)(sbom_spdx_tag_value, parameters.debug, sbom_spdx_tag_value_results_file), (0, run_command_1.run_cli)(sbom_spdx_json, parameters.debug, sbom_spdx_json_results_file), (0, run_command_1.run_cli)(sbom_github, parameters.debug, sbom_github_results_file)];
                         yield Promise.all(promises);
@@ -16425,7 +16427,6 @@ function ContainerScan(parameters) {
             else {
                 function runParallelFunctions() {
                     return __awaiter(this, void 0, void 0, function* () {
-                        let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`;
                         const promises = [(0, run_command_1.run_cli)(scanCommandOriginal, parameters.debug, 'results.txt'), (0, run_command_1.run_cli)(sbom_cyclonedx_xml, parameters.debug, sbom_cyclonedx_xml_results_file), (0, run_command_1.run_cli)(sbom_cyclonedx_json, parameters.debug, sbom_cyclonedx_json_results_file), (0, run_command_1.run_cli)(sbom_spdx_tag_value, parameters.debug, sbom_spdx_tag_value_results_file), (0, run_command_1.run_cli)(sbom_spdx_json, parameters.debug, sbom_spdx_json_results_file), (0, run_command_1.run_cli)(sbom_github, parameters.debug, sbom_github_results_file)];
                         yield Promise.all(promises);
                         core.info('All functions completed in parallel');
@@ -16447,13 +16448,6 @@ function ContainerScan(parameters) {
             }
             else {
                 throw `Unable to locate scan results file: results.txt`;
-            }
-            if (parameters.debug == "true") {
-                core.info('#### DEBUG START ####');
-                core.info('containerScan.ts');
-                core.info('results');
-                //core.info(results)
-                core.info('#### DEBUG END ####');
             }
             //creating the body for the comment
             let commentBody = '<pre>Veracode Container/IaC/Sercets Scan Summary\n';
@@ -16514,6 +16508,12 @@ function ContainerScan(parameters) {
         }
         else if (parameters.command == "sbom") {
             // This is where only the SBOM part is runnuing
+            if (parameters.debug == "true") {
+                core.info('#### DEBUG START ####');
+                core.info('containerScan.ts');
+                core.info('SBOM generation part');
+                core.info('#### DEBUG END ####');
+            }
             //set the correct filename based on the format
             let filename = "";
             if (parameters.format == "cyclonedx-xml") {
