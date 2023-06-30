@@ -16531,6 +16531,15 @@ function ContainerScan(parameters) {
             else if (parameters.format == "github") {
                 let filename = 'sbom_github.json';
             }
+            else {
+                let filename = 'sbom.txt';
+            }
+            if (parameters.debug == "true") {
+                core.info('#### DEBUG START ####');
+                core.info('containerScan.ts');
+                core.info('SBOM filename: ' + filename);
+                core.info('#### DEBUG END ####');
+            }
             //generate command to run
             let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${filename}`;
             (0, run_command_1.run_cli)(scanCommandOriginal, parameters.debug, filename);
