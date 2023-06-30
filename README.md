@@ -35,8 +35,8 @@ The tool will need some information passed to it as parameters (many are optiona
   * command
     * The command to run (scan|sbom) 
     * Default is 'scan'
-  * soruce
-    * The soruce to be scanned. Can be a folder, can be a remote repository, can be an image name ror can be an image archive name
+  * source
+    * The source to be scanned. Can be a folder, can be a remote repository, can be an image name or can be an image archive name
     * Default is './'
   * format
     * Format in which to output and store the scan results. Enter one of the following values (json|table) for the `scan` command
