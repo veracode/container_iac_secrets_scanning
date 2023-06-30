@@ -15,6 +15,7 @@ A build can be failed upon findings, as well the action will automatically gener
   
 If the action will run within a PR, it will automatically add a comment with all results to the PR. This is done for easy review and approval processes.  
 ![](/media/pr-comment.png)  
+![](/media/pr-comment1.png)  
   
 If the parameter `fail_build` is set to `true`, the action will fail the step upon findings. If set to `false`, the step will not show as failed.  
 ![](/media/fail-build.png)  
