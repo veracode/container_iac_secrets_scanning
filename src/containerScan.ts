@@ -56,10 +56,8 @@ export async function ContainerScan(parameters:any) {
 
     //always run this to generate text output
     if ( parameters.output == "results.json" ){
-      let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format table --output results.txt`
-      
       async function runParallelFunctions(): Promise<void> {
-        let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output results.txt`
+        let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format table --output results.txt`
         const promises = [run_cli(scanCommandOriginal,parameters.debug,'results.json'), run_cli(scanCommandText,parameters.debug,'results.txt'), run_cli(sbom_cyclonedx_xml,parameters.debug,sbom_cyclonedx_xml_results_file), run_cli(sbom_cyclonedx_json,parameters.debug,sbom_cyclonedx_json_results_file), run_cli(sbom_spdx_tag_value,parameters.debug,sbom_spdx_tag_value_results_file), run_cli(sbom_spdx_json,parameters.debug,sbom_spdx_json_results_file), run_cli(sbom_github,parameters.debug,sbom_github_results_file)];
         await Promise.all(promises);
         core.info('All functions completed in parallel');
