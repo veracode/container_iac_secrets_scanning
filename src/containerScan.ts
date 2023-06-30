@@ -188,22 +188,22 @@ export async function ContainerScan(parameters:any) {
     //set the correct filename based on the format
     let filename = ""
     if ( parameters.format == "cyclonedx-xml" ){
-      let filename = 'sbom_cyclonedx_xml.xml'
+      filename = 'sbom_cyclonedx_xml.xml'
     }
     else if ( parameters.format == "cyclonedx-json" ){
-      let filename = 'sbom_cyclonedx_json.json'
+      filename = 'sbom_cyclonedx_json.json'
     }
     else if ( parameters.format == "spdx-tag-value" ){
-      let filename = 'sbom_spdx_tag_value.json'
+      filename = 'sbom_spdx_tag_value.json'
     }
     else if ( parameters.format == "spdx-json" ){
-      let filename = 'sbom_spdx_json.json'
+      filename = 'sbom_spdx_json.json'
     }
     else if ( parameters.format == "github" ){
-      let filename = 'sbom_github.json'
+      filename = 'sbom_github.json'
     }
     else { 
-      let filename = 'sbom.txt'
+      filename = 'sbom.txt'
     }
 
     if ( parameters.debug == "true" ){
