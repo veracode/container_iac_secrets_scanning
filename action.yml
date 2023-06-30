@@ -1,4 +1,4 @@
-name: 'Veracode Container Scanning GitHub Action'
+name: 'Veracode Container/IaC/Secrets Scanning GitHub Action'
 author: 'Veracode'
 
 inputs:
@@ -21,17 +21,13 @@ inputs:
     required: true
     default: '.'
   format:
-    description: 'format in which to output the scan results. Enter one of the following values (json|cyclondx|table)'
+    description: 'format in which to output the scan results. Enter one of the following values (json|table)'
     required: true
     default: 'json'
   type:
-    description: 'Which tpe of scan to run (image|archive|repo|directory)'
+    description: 'Which type of scan to run (image|archive|repo|directory)'
     required: true
-    default: 'table'
-  output:
-    description: 'Output file to store'
-    required: false
-    default: 'results.json'
+    default: 'directory'
   debug:
     description: 'debug'
     required: false

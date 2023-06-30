@@ -186,6 +186,30 @@ export async function ContainerScan(parameters:any) {
   else if ( parameters.command == "sbom" ){
     // This is where only the SBOM part is runnuing
 
+    
+    //set the correct filename based on the format
+    let filename = ""
+    if ( parameters.format == "cyclonedx-xml" ){
+      let filename = 'sbom_cyclonedx_xml.xml'
+    }
+    else if ( parameters.format == "cyclonedx-json" ){
+      let filename = 'sbom_cyclonedx_json.json'
+    }
+    else if ( parameters.format == "spdx-tag-value" ){
+      let filename = 'sbom_spdx_tag_value.json'
+    }
+    else if ( parameters.format == "spdx-json" ){
+      let filename = 'sbom_spdx_json.json'
+    }
+    else if ( parameters.format == "github" ){
+      let filename = 'sbom_github.json'
+    }
+
+    //generate command to run
+    let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${filename}`
+    run_cli(scanCommandOriginal,parameters.debug,filename)
+    let storeArtifacts = await store_artifacts(filename,parameters.debug)
+
   }
 
 

@@ -12,7 +12,6 @@ const command = core.getInput("command", {required:true})
 const source = core.getInput("source", {required:true})
 const format = core.getInput("format", {required:true})
 const type = core.getInput("type", {required:true})
-const output = core.getInput("output", {required:false})
 const debug = core.getInput("debug", {required:false})
 const fail_build = core.getInput("fail_build", {required:false})
 
@@ -55,7 +54,6 @@ const parameters = {
     source: source,
     format: format,
     type: type,
-    output: output,
     debug: debug,
     fail_build: fail_build,
     pr_context: pr_context,

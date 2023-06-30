@@ -22,6 +22,5 @@ jobs:
             type: "directory"
             source: "./"
             format: "json"
-            output: "results.json"
             debug: 1
             fail_build: true
