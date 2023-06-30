@@ -13,188 +13,181 @@ export async function ContainerScan(parameters:any) {
   //install the cli
   install_cli(parameters)
 
-    //let curlCommandOutput:any
-            env.VERACODE_API_KEY_ID= parameters.vid
-            env.VERACODE_API_KEY_SECRET= parameters.vkey
-            
-            if ( parameters.command == "scan" ){
-              //run this when oputput is requires and we may create issues and/or PR decoration
-
-
-              //check if format corresponds to the output file extension
-              if ( parameters.format == "table" && parameters.output == "results.json" ){
-                core.info('You are trying to create text based output, but specified json to be the output. The output will be changed to a text file!')
-                parameters.output = "results.txt"
-                if ( parameters.debug == "true" ){
-                  core.info('#### DEBUG START ####')
-                  core.info('containerScan.ts - check for text output')
-                  core.info(parameters.output)
-                  core.info('#### DEBUG END ####')
-                }
-              }
-              else if ( parameters.format == "json" && parameters.output != "results.json" ){
-                core.info('You are trying to create json based output, but specified text to be the output. The output will be changed to a json file!')
-                parameters.output = "results.json"
-                if ( parameters.debug == "true" ){
-                  core.info('#### DEBUG START ####')
-                  core.info('containerScan.ts - check for json output')
-                  core.info(parameters.output)
-                  core.info('#### DEBUG END ####')
-                }
-              }
-
-              //generate command to run
-              let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`
-              
-              if ( parameters.debug == "true" ){
-                core.info('#### DEBUG START ####')
-                core.info('containerScan.ts - original scan command')
-                core.info(scanCommandOriginal)
-                core.info('#### DEBUG END ####')
-              }
-
-              //run the original command
-              //run_cli(scanCommand, parameters)
-
-
-              //always run this to generate text output
-              if ( parameters.output == "results.json" ){
-                parameters.output = "results.txt"
-                let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`
-                //run_cli(scanCommand, parameters)
-              }
-              else {
-                let scanCommandText = scanCommandOriginal
-              }
-
-              async function runParallelFunctions(): Promise<void> {
-                let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`
-                const promises = [run_cli(scanCommandOriginal,parameters), run_cli(scanCommandText,parameters)];
-                await Promise.all(promises);
-                console.log('Both functions completed in parallel');
-              }
-
-              runParallelFunctions().catch((error) => {
-                console.error('An error occurred:', error);
-              });
-
-            }
-            else if ( parameters.command == "sbom" ){
-
-            }
-
-
-
-            //check if format corresponds to the output file extension
-            //do something
-
-
-/*
-            let scanCommand
-            if(parameters.output != '') {
-                scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output} `
-                core.info('Scan command :' + scanCommand)
-                curlCommandOutput = execSync(scanCommand)
-                core.info(`${curlCommandOutput}`)
+  env.VERACODE_API_KEY_ID= parameters.vid
+  env.VERACODE_API_KEY_SECRET= parameters.vkey
+  
+  //run this when oputput is requires and we may create issues and/or PR decorations
+  if ( parameters.command == "scan" ){
     
-                //store output files as artifacts
-                const artifactClient = artifact.create()
-                const artifactName = 'Veracode Container IaC Secrets Scanning Results';
-                const files = [parameters.output];
-                
-                const rootDirectory = process.cwd()
-                const options = {
-                    continueOnError: true
-                }
-                const uploadResult = await artifactClient.uploadArtifact(artifactName, files, rootDirectory, options)
-                
-                }
-            else{
-                curlCommandOutput = execSync(`curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format}`)
-                core.info(`${curlCommandOutput}`)
-            }
+    //setting the output file extension
+    if ( parameters.format == "table" ){
+      core.info('Setting output file to results.txt')
+      parameters.output = "results.txt"
+    }
+    else if ( parameters.format == "json" ){
+      core.info('Setting output file to results.json')
+      parameters.output = "results.json"
+    }
 
-            let results:any = ""
+    if ( parameters.debug == "true" ){
+      core.info('#### DEBUG START ####')
+      core.info('containerScan.ts - check for text output')
+      core.info(parameters.output)
+      core.info('#### DEBUG END ####')
+    }
 
-            if(fs.existsSync(parameters.output)) {
-              console.log(`Processing file: ${parameters.output}`);
-              results = fs.readFileSync(parameters.output, 'utf8');
-            } else {
-              throw `Unable to locate scan results file: ${parameters.output}`;
-            }
-
-            if ( parameters.debug == "true" ){
-              core.info('#### DEBUG START ####')
-              core.info('containerScan.ts')
-              core.info('results')
-              //core.info(results)
-              core.info('#### DEBUG END ####')
-            }
-
-            //creating the body for the comment
-            let commentBody:string = 'Veracode Container/IaC/Sercets Scan Summary'
-            commentBody = commentBody+'---\n<details><summary>details</summary><p>\n---'
-            commentBody = commentBody + results
-            commentBody = commentBody+'---\n</p></details>\n==='
-
-            if ( parameters.debug == "true" ){
-              core.info('#### DEBUG START ####')
-              core.info('containerScan.ts')
-              core.info('comment Body')
-              //core.info(commentBody)
-              core.info('#### DEBUG END ####')
-            }
-
-            if ( parameters.isPR >= 1 ){
-              core.info("This run is part of a PR, should add some PR comment")
-
-              try {
-                const octokit = github.getOctokit(parameters.token);
-
-                const context = github.context
-                const repository:any = process.env.GITHUB_REPOSITORY
-                const repo = repository.split("/");
-                const commentID:any = context.payload.pull_request?.number;
+    //generate command to run
+    let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`
     
-                const { data: comment } = await octokit.rest.issues.createComment({
-                    owner: repo[0],
-                    repo: repo[1],
-                    issue_number: commentID,
-                    body: commentBody,
-                });
-                core.info('Adding scan results as comment to PR #'+commentID)
-              } catch (error:any) {
-                  core.info(error);
-              }
-            }
+    if ( parameters.debug == "true" ){
+      core.info('#### DEBUG START ####')
+      core.info('containerScan.ts - original scan command')
+      core.info(scanCommandOriginal)
+      core.info('#### DEBUG END ####')
+    }
 
-            if ( parameters.fail_build == "true" ){
-                //const policyPassed = commentBody.substring('"policy-passed":')
-                const regex = /\"policy-passed\": false/g;
-                //const policyPassed = commentBody.match(regex)
-                const policyPassed = commentBody.search(regex)
-                core.info('policyPassed: '+policyPassed)
-                //const policyPassedString = policyPassed.split(":")
+    //create SBOM commands
+    let sbom_cyclonedx_xml = `sbom --source ${parameters.source} --type ${parameters.type} --format cyclonedx-xml --output sbom_cyclonedx_xml.xml`
+    let sbom_cyclonedx_xml_results_file = 'sbom_cyclonedx_xml.xml'
 
-                if ( parameters.debug == "true" ){
-                  core.info('#### DEBUG START ####')
-                  core.info('containerScan.ts')
-                  core.info('full output string')
-                  //core.info(commentBody)
-                  core.info('Fail Build?')
-                  //core.info(policyPassed)
-                  core.info('#### DEBUG END ####')
-                }
+    let sbom_cyclonedx_json = `sbom --source ${parameters.source} --type ${parameters.type} --format cyclonedx-json --output sbom_cyclonedx_json.json`
+    let sbom_cyclonedx_json_results_file = 'sbom_cyclonedx_json.json'
 
-                if ( policyPassed > 1 ){
-                  core.info('Veracode Container Scanning failed')
-                  core.setFailed('Veracode Container Scanning failed')
-                }
-                else {
-                  core.info('Veracode Container Scanning passed')
-                }
-            }
-*/
-          
+    let sbom_spdx_tag_value = `sbom --source ${parameters.source} --type ${parameters.type} --format spdx-tag-value --output sbom_spdx_tag_value.json`
+    let sbom_spdx_tag_value_results_file = 'sbom_spdx_tag_value.json'
+
+    let sbom_spdx_json = `sbom --source ${parameters.source} --type ${parameters.type} --format spdx-json --output sbom_spdx_json.json`
+    let sbom_spdx_json_results_file = 'sbom_spdx_json.json'
+
+    let sbom_github = `sbom --source ${parameters.source} --type ${parameters.type} --format github --output sbom_github.json`
+    let sbom_github_results_file = 'sbom_github.json'
+
+
+    //always run this to generate text output
+    if ( parameters.output == "results.json" ){
+      let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`
+      
+      async function runParallelFunctions(): Promise<void> {
+        let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`
+        const promises = [run_cli(scanCommandOriginal,parameters.debug,'results.json'), run_cli(scanCommandText,parameters.debug,'results.txt'), run_cli(sbom_cyclonedx_xml,parameters.debug,sbom_cyclonedx_xml_results_file), run_cli(sbom_cyclonedx_json,parameters.debug,sbom_cyclonedx_json_results_file), run_cli(sbom_spdx_tag_value,parameters.debug,sbom_spdx_tag_value_results_file), run_cli(sbom_spdx_json,parameters.debug,sbom_spdx_json_results_file), run_cli(sbom_github,parameters.debug,sbom_github_results_file)];
+        await Promise.all(promises);
+        console.log('Both functions completed in parallel');
+      }
+
+    }
+    else {
+      async function runParallelFunctions(): Promise<void> {
+        let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`
+        const promises = [run_cli(scanCommandOriginal,parameters.debug,'results.txt'), run_cli(sbom_cyclonedx_xml,parameters.debug,sbom_cyclonedx_xml_results_file), run_cli(sbom_cyclonedx_json,parameters.debug,sbom_cyclonedx_json_results_file), run_cli(sbom_spdx_tag_value,parameters.debug,sbom_spdx_tag_value_results_file), run_cli(sbom_spdx_json,parameters.debug,sbom_spdx_json_results_file), run_cli(sbom_github,parameters.debug,sbom_github_results_file)];
+        await Promise.all(promises);
+        console.log('Both functions completed in parallel');
+      }
+    }
+
+    async function runParallelFunctions(): Promise<void> {
+      let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`
+      const promises = [run_cli(scanCommandOriginal,parameters.debug,'results.json'), run_cli(scanCommandText,parameters.debug,'results.txt')];
+      await Promise.all(promises);
+      console.log('Both functions completed in parallel');
+    }
+
+    runParallelFunctions().catch((error) => {
+      console.error('An error occurred:', error);
+    });
+
+    
+//Start here for results outpout
+
+    let results:any = ""
+
+    if(fs.existsSync('results.txt')) {
+      console.log(`Processing file: results.txt`);
+      results = fs.readFileSync('results.txt', 'utf8');
+    } else {
+      throw `Unable to locate scan results file: results.txt`;
+    }
+
+    if ( parameters.debug == "true" ){
+      core.info('#### DEBUG START ####')
+      core.info('containerScan.ts')
+      core.info('results')
+      //core.info(results)
+      core.info('#### DEBUG END ####')
+    }
+
+    //creating the body for the comment
+    let commentBody:string = 'Veracode Container/IaC/Sercets Scan Summary'
+    commentBody = commentBody+'---\n<details><summary>details</summary><p>\n---'
+    commentBody = commentBody + results
+    commentBody = commentBody+'---\n</p></details>\n==='
+
+    if ( parameters.debug == "true" ){
+      core.info('#### DEBUG START ####')
+      core.info('containerScan.ts')
+      core.info('comment Body')
+      core.info(commentBody)
+      core.info('#### DEBUG END ####')
+    }
+
+    if ( parameters.isPR >= 1 ){
+      core.info("This run is part of a PR, should add some PR comment")
+
+      try {
+        const octokit = github.getOctokit(parameters.token);
+
+        const context = github.context
+        const repository:any = process.env.GITHUB_REPOSITORY
+        const repo = repository.split("/");
+        const commentID:any = context.payload.pull_request?.number;
+
+        const { data: comment } = await octokit.rest.issues.createComment({
+            owner: repo[0],
+            repo: repo[1],
+            issue_number: commentID,
+            body: commentBody,
+        });
+        core.info('Adding scan results as comment to PR #'+commentID)
+      } catch (error:any) {
+          core.info(error);
+      }
+    }
+
+    if ( parameters.fail_build == "true" ){
+        //const policyPassed = commentBody.substring('"policy-passed":')
+        const regex = /\"policy-passed\": false/g;
+        //const policyPassed = commentBody.match(regex)
+        const policyPassed = commentBody.search(regex)
+        core.info('policyPassed: '+policyPassed)
+        //const policyPassedString = policyPassed.split(":")
+
+        if ( parameters.debug == "true" ){
+          core.info('#### DEBUG START ####')
+          core.info('containerScan.ts')
+          core.info('full output string')
+          //core.info(commentBody)
+          core.info('Fail Build?')
+          //core.info(policyPassed)
+          core.info('#### DEBUG END ####')
+        }
+
+        if ( policyPassed > 1 ){
+          core.info('Veracode Container Scanning failed')
+          core.setFailed('Veracode Container Scanning failed')
+        }
+        else {
+          core.info('Veracode Container Scanning passed')
+        }
+    }
+
+
+
+
+  }
+  else if ( parameters.command == "sbom" ){
+    // This is where only the SBOM part is runnuing
+
+  }
+
+
 
 }
