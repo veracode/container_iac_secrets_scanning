@@ -16456,12 +16456,10 @@ function ContainerScan(parameters) {
                 core.info('#### DEBUG END ####');
             }
             //creating the body for the comment
-            let commentBody = 'Veracode Container/IaC/Sercets Scan Summary\n';
-            commentBody = commentBody + '\n<details><summary>details</summary><p>\n---';
+            let commentBody = '<pre>Veracode Container/IaC/Sercets Scan Summary\n';
+            commentBody = commentBody + '\n<details><summary>details</summary><p>\n';
             commentBody = commentBody + results;
-            commentBody = commentBody.replace(/\n/g, '<br>');
-            commentBody = commentBody.replace(/\t/g, '&#9;');
-            commentBody = commentBody + '---\n</p></details>\n';
+            commentBody = commentBody + '\n</p></details>\n</pre>';
             if (parameters.debug == "true") {
                 core.info('#### DEBUG START ####');
                 core.info('containerScan.ts');
