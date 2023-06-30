@@ -16369,6 +16369,7 @@ const process_1 = __nccwpck_require__(7282);
 const fs = __importStar(__nccwpck_require__(7147));
 const run_command_1 = __nccwpck_require__(1698);
 const install_cli_1 = __nccwpck_require__(6462);
+const store_artifacts_1 = __nccwpck_require__(1703);
 function ContainerScan(parameters) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
@@ -16414,9 +16415,13 @@ function ContainerScan(parameters) {
                         console.log('Both functions completed in parallel');
                     });
                 }
+                //run all commands in parallel
                 runParallelFunctions().catch((error) => {
                     console.error('An error occurred:', error);
                 });
+                //store artifacts
+                let files = ['results.json', 'results.txt', 'sbom_cyclonedx_xml.xml', 'sbom_cyclonedx_json.json', 'sbom_spdx_tag_value.json', 'sbom_spdx_json.json', 'sbom_github.json'];
+                let storeArtifacts = yield (0, store_artifacts_1.store_artifacts)(files, parameters.debug);
             }
             else {
                 function runParallelFunctions() {
@@ -16427,9 +16432,13 @@ function ContainerScan(parameters) {
                         console.log('Both functions completed in parallel');
                     });
                 }
+                //run all commands in parallel
                 runParallelFunctions().catch((error) => {
                     console.error('An error occurred:', error);
                 });
+                //store artifacts
+                let files = ['results.txt', 'sbom_cyclonedx_xml.xml', 'sbom_cyclonedx_json.json', 'sbom_spdx_tag_value.json', 'sbom_spdx_json.json', 'sbom_github.json'];
+                let storeArtifacts = yield (0, store_artifacts_1.store_artifacts)(files, parameters.debug);
             }
             //Start here for results outpout
             let results = "";
@@ -16650,7 +16659,7 @@ function install_cli(parameters) {
         let curlCommandOutput = (0, child_process_1.execSync)(installCommand);
         if (parameters.debug == "true") {
             core.info('#### DEBUG START ####');
-            core.info('intall_clid.ts - command output');
+            core.info('intall_cli.ts - command output');
             core.info('command output : ' + curlCommandOutput);
             core.info('#### DEBUG END ####');
         }
@@ -16702,7 +16711,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run_cli = void 0;
 const core = __importStar(__nccwpck_require__(5127));
-const artifact = __importStar(__nccwpck_require__(1413));
 const child_process_1 = __nccwpck_require__(2081);
 function run_cli(command, debug, resultsfile) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -16717,24 +16725,74 @@ function run_cli(command, debug, resultsfile) {
             core.info('#### DEBUG END ####');
         }
         core.info(`${curlCommandOutput}`);
+    });
+}
+exports.run_cli = run_cli;
+
+
+/***/ }),
+
+/***/ 1703:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.store_artifacts = void 0;
+const core = __importStar(__nccwpck_require__(5127));
+const artifact = __importStar(__nccwpck_require__(1413));
+function store_artifacts(resultfiles, debug) {
+    return __awaiter(this, void 0, void 0, function* () {
         //store output files as artifacts
         if (debug == "true") {
             core.info('#### DEBUG START ####');
-            core.info('run_command.ts - Arifact');
-            core.info('Artifact name : ' + resultsfile);
+            core.info('store_artifacts.ts - Arifact');
+            core.info('Artifact name : ' + resultfiles);
             core.info('#### DEBUG END ####');
         }
         const artifactClient = artifact.create();
         const artifactName = 'Veracode Container IaC Secrets Scanning Results';
-        const files = [resultsfile];
+        //const files = [resultfiles];
         const rootDirectory = process.cwd();
         const options = {
             continueOnError: true
         };
-        const uploadResult = yield artifactClient.uploadArtifact(artifactName, files, rootDirectory, options);
+        const uploadResult = yield artifactClient.uploadArtifact(artifactName, resultfiles, rootDirectory, options);
     });
 }
-exports.run_cli = run_cli;
+exports.store_artifacts = store_artifacts;
 
 
 /***/ }),

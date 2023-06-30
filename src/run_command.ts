@@ -17,22 +17,4 @@ export async function run_cli(command:string, debug:any, resultsfile:any) {
         core.info('#### DEBUG END ####')
     }
     core.info(`${curlCommandOutput}`)
-
-    //store output files as artifacts
-    if ( debug == "true" ){
-        core.info('#### DEBUG START ####')
-        core.info('run_command.ts - Arifact')
-        core.info('Artifact name : '+resultsfile)
-        core.info('#### DEBUG END ####')
-    }
-    const artifactClient = artifact.create()
-    const artifactName = 'Veracode Container IaC Secrets Scanning Results';
-    const files = [resultsfile];
-    
-    const rootDirectory = process.cwd()
-    const options = {
-        continueOnError: true
-    }
-    const uploadResult = await artifactClient.uploadArtifact(artifactName, files, rootDirectory, options)
-
 }

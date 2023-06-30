@@ -7,6 +7,7 @@ import { env } from "process";
 import * as fs from 'fs';
 import { run_cli } from "./run_command";
 import { install_cli } from "./install_cli";
+import { store_artifacts } from "./store_artifacts";
 
 export async function ContainerScan(parameters:any) {
 
@@ -63,9 +64,15 @@ export async function ContainerScan(parameters:any) {
         await Promise.all(promises);
         console.log('Both functions completed in parallel');
       }
+
+      //run all commands in parallel
       runParallelFunctions().catch((error) => {
         console.error('An error occurred:', error);
       });
+
+      //store artifacts
+      let files = ['results.json','results.txt','sbom_cyclonedx_xml.xml','sbom_cyclonedx_json.json','sbom_spdx_tag_value.json','sbom_spdx_json.json','sbom_github.json']
+      let storeArtifacts = await store_artifacts(files,parameters.debug)
     }
     else {
       async function runParallelFunctions(): Promise<void> {
@@ -74,15 +81,24 @@ export async function ContainerScan(parameters:any) {
         await Promise.all(promises);
         console.log('Both functions completed in parallel');
       }
+
+      //run all commands in parallel
       runParallelFunctions().catch((error) => {
         console.error('An error occurred:', error);
       });
+
+      //store artifacts
+      let files = ['results.txt','sbom_cyclonedx_xml.xml','sbom_cyclonedx_json.json','sbom_spdx_tag_value.json','sbom_spdx_json.json','sbom_github.json']
+      let storeArtifacts = await store_artifacts(files,parameters.debug)
+
     }
 
+
+
     
 
     
-//Start here for results outpout
+    //Start here for results outpout
 
     let results:any = ""
 

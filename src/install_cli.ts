@@ -10,7 +10,7 @@ export async function install_cli(parameters:any) {
 
     if ( parameters.debug == "true" ){
         core.info('#### DEBUG START ####')
-        core.info('intall_clid.ts - command output')
+        core.info('intall_cli.ts - command output')
         core.info('command output : '+curlCommandOutput)
         core.info('#### DEBUG END ####')
       }
