@@ -16489,7 +16489,7 @@ function ContainerScan(parameters) {
             }
             if (parameters.fail_build == "true") {
                 //const policyPassed = commentBody.substring('"policy-passed":')
-                const regex = /\"policy-passed\": false/g;
+                const regex = /\"Policy\ Passed\": false/g;
                 //const policyPassed = commentBody.match(regex)
                 const policyPassed = commentBody.search(regex);
                 core.info('policyPassed: ' + policyPassed);
@@ -16498,9 +16498,9 @@ function ContainerScan(parameters) {
                     core.info('#### DEBUG START ####');
                     core.info('containerScan.ts');
                     core.info('full output string');
-                    //core.info(commentBody)
+                    core.info(commentBody);
                     core.info('Fail Build?');
-                    //core.info(policyPassed)
+                    core.info(policyPassed);
                     core.info('#### DEBUG END ####');
                 }
                 if (policyPassed > 1) {
