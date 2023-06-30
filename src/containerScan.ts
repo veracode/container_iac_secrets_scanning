@@ -29,7 +29,7 @@ export async function ContainerScan(parameters:any) {
     }
 
     //generate command to run
-    let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output results_file`
+    let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${results_file}`
     
     if ( parameters.debug == "true" ){
       core.info('#### DEBUG START ####')
