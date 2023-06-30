@@ -16414,7 +16414,7 @@ function ContainerScan(parameters) {
             let sbom_github_results_file = 'sbom_github.json';
             //always run this to generate text output
             if (parameters.output == "results.json") {
-                let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`;
+                let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output results.txt`;
                 function runParallelFunctions() {
                     return __awaiter(this, void 0, void 0, function* () {
                         let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`;

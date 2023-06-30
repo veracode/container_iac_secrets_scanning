@@ -65,7 +65,7 @@ export async function ContainerScan(parameters:any) {
 
     //always run this to generate text output
     if ( parameters.output == "results.json" ){
-      let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`
+      let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output results.txt`
       
       async function runParallelFunctions(): Promise<void> {
         let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`
