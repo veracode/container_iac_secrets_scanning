@@ -8,7 +8,12 @@ import * as fs from 'fs';
 import { run_cli } from "./run_command";
 
 export async function ContainerScan(parameters:any) {
-    let curlCommandOutput:any
+
+  //install the cli
+  let installCLI = execSync('curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode configure')
+  core.info('Install command :' + installCLI)
+
+    //let curlCommandOutput:any
             env.VERACODE_API_KEY_ID= parameters.vid
             env.VERACODE_API_KEY_SECRET= parameters.vkey
             

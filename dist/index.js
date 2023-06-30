@@ -16364,11 +16364,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.ContainerScan = void 0;
 const core = __importStar(__nccwpck_require__(5127));
+const child_process_1 = __nccwpck_require__(2081);
 const process_1 = __nccwpck_require__(7282);
 const run_command_1 = __nccwpck_require__(1698);
 function ContainerScan(parameters) {
     return __awaiter(this, void 0, void 0, function* () {
-        let curlCommandOutput;
+        //install the cli
+        let installCLI = (0, child_process_1.execSync)('curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode configure');
+        core.info('Install command :' + installCLI);
+        //let curlCommandOutput:any
         process_1.env.VERACODE_API_KEY_ID = parameters.vid;
         process_1.env.VERACODE_API_KEY_SECRET = parameters.vkey;
         if (parameters.command == "scan") {
@@ -16674,41 +16678,10 @@ const artifact = __importStar(__nccwpck_require__(1413));
 const child_process_1 = __nccwpck_require__(2081);
 function run_cli(command, parameters) {
     return __awaiter(this, void 0, void 0, function* () {
-        let curlCommandOutput = '';
-        function isVeracodeCliAvailable(command) {
-            return new Promise((resolve) => {
-                (0, child_process_1.exec)(`command -v ${command}`, (error, stdout) => {
-                    if (error) {
-                        resolve(false);
-                    }
-                    else {
-                        resolve(stdout.trim() !== '');
-                    }
-                });
-            });
-        }
-        isVeracodeCliAvailable('veracode')
-            .then((isAvailable) => {
-            if (isAvailable) {
-                let scanCommand = ` ./veracode ${command} `;
-                let curlCommandOutput = (0, child_process_1.execSync)(scanCommand);
-                core.info('Scan command :' + scanCommand);
-            }
-            else {
-                (0, child_process_1.execSync)('curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode configure');
-                let scanCommand = ` ./veracode ${command} `;
-                let curlCommandOutput = (0, child_process_1.execSync)(scanCommand);
-                core.info('Scan command :' + scanCommand);
-            }
-        })
-            .catch((error) => {
-            console.error('An error occurred:', error);
-        });
-        /*
-            let scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${command} `
-            core.info('Scan command :' + scanCommand)
-            let curlCommandOutput = execSync(scanCommand)
-        */
+        //let scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${command} `
+        let scanCommand = `./veracode ${command} `;
+        core.info('Scan command :' + scanCommand);
+        let curlCommandOutput = (0, child_process_1.execSync)(scanCommand);
         if (parameters.debug == "true") {
             core.info('#### DEBUG START ####');
             core.info('run_command.ts - command output');
