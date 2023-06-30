@@ -16460,6 +16460,7 @@ function ContainerScan(parameters) {
             commentBody = commentBody + '\n<details><summary>details</summary><p>\n---';
             commentBody = commentBody + results;
             commentBody = commentBody.replace(/\n/g, '<br>');
+            commentBody = commentBody.replace(/\t/g, '&#9;');
             commentBody = commentBody + '---\n</p></details>\n';
             if (parameters.debug == "true") {
                 core.info('#### DEBUG START ####');
