@@ -16489,7 +16489,7 @@ function ContainerScan(parameters) {
             }
             if (parameters.fail_build == "true") {
                 //const policyPassed = commentBody.substring('"policy-passed":')
-                const regex = /\"Policy\ Passed\": false/g;
+                const regex = /Policy\ Passed\ =\ false/g;
                 //const policyPassed = commentBody.match(regex)
                 const policyPassed = commentBody.search(regex);
                 core.info('policyPassed: ' + policyPassed);
