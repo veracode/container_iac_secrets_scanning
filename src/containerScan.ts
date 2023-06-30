@@ -18,16 +18,6 @@ export async function ContainerScan(parameters:any) {
   
   //run this when oputput is requires and we may create issues and/or PR decorations
   if ( parameters.command == "scan" ){
-    
-    //setting the output file extension
-    if ( parameters.format == "table" ){
-      core.info('Setting output file to results.txt')
-      parameters.output = "results.txt"
-    }
-    else if ( parameters.format == "json" ){
-      core.info('Setting output file to results.json')
-      parameters.output = "results.json"
-    }
 
     if ( parameters.debug == "true" ){
       core.info('#### DEBUG START ####')
@@ -65,7 +55,7 @@ export async function ContainerScan(parameters:any) {
 
     //always run this to generate text output
     if ( parameters.output == "results.json" ){
-      let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output results.txt`
+      let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format table --output results.txt`
       
       async function runParallelFunctions(): Promise<void> {
         let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`

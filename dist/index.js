@@ -16378,15 +16378,6 @@ function ContainerScan(parameters) {
         process_1.env.VERACODE_API_KEY_SECRET = parameters.vkey;
         //run this when oputput is requires and we may create issues and/or PR decorations
         if (parameters.command == "scan") {
-            //setting the output file extension
-            if (parameters.format == "table") {
-                core.info('Setting output file to results.txt');
-                parameters.output = "results.txt";
-            }
-            else if (parameters.format == "json") {
-                core.info('Setting output file to results.json');
-                parameters.output = "results.json";
-            }
             if (parameters.debug == "true") {
                 core.info('#### DEBUG START ####');
                 core.info('containerScan.ts - check for text output');
@@ -16414,7 +16405,7 @@ function ContainerScan(parameters) {
             let sbom_github_results_file = 'sbom_github.json';
             //always run this to generate text output
             if (parameters.output == "results.json") {
-                let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output results.txt`;
+                let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format table --output results.txt`;
                 function runParallelFunctions() {
                     return __awaiter(this, void 0, void 0, function* () {
                         let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${parameters.output}`;
