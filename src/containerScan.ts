@@ -114,6 +114,8 @@ export async function ContainerScan(parameters:any) {
     commentBody = commentBody + results
     commentBody = commentBody+'\n</p></details>\n</pre>'
 
+    core.info(results)
+
     if ( parameters.debug == "true" ){
       core.info('#### DEBUG START ####')
       core.info('containerScan.ts')

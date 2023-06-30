@@ -16454,6 +16454,7 @@ function ContainerScan(parameters) {
             commentBody = commentBody + '\n<details><summary>details</summary><p>\n';
             commentBody = commentBody + results;
             commentBody = commentBody + '\n</p></details>\n</pre>';
+            core.info(results);
             if (parameters.debug == "true") {
                 core.info('#### DEBUG START ####');
                 core.info('containerScan.ts');
