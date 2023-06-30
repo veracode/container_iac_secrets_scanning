@@ -213,10 +213,12 @@ export async function ContainerScan(parameters:any) {
       core.info('#### DEBUG END ####')
     }
 
+    const resultFile = [filename]
+
     //generate command to run
     let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${filename}`
     run_cli(scanCommandOriginal,parameters.debug,filename)
-    let storeArtifacts = await store_artifacts(filename,parameters.debug)
+    let storeArtifacts = await store_artifacts(resultFile,parameters.debug)
 
   }
 

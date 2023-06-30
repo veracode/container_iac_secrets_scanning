@@ -16540,10 +16540,11 @@ function ContainerScan(parameters) {
                 core.info('SBOM filename: ' + filename);
                 core.info('#### DEBUG END ####');
             }
+            const resultFile = [filename];
             //generate command to run
             let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${filename}`;
             (0, run_command_1.run_cli)(scanCommandOriginal, parameters.debug, filename);
-            let storeArtifacts = yield (0, store_artifacts_1.store_artifacts)(filename, parameters.debug);
+            let storeArtifacts = yield (0, store_artifacts_1.store_artifacts)(resultFile, parameters.debug);
         }
     });
 }
