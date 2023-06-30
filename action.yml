@@ -1,4 +1,5 @@
 name: 'Veracode Container/IaC/Secrets Scanning GitHub Action'
+description: 'Veracode Container/IaC/Secrets Scanning GitHub Action'
 author: 'Veracode'
 
 inputs:
