@@ -22,10 +22,10 @@ export async function ContainerScan(parameters:any) {
 
     let results_file = ""
     if ( parameters.format == "json" ){
-      let results_file = 'results.json'
+      results_file = 'results.json'
     }
     else {
-      let results_file = 'results.txt'
+      results_file = 'results.txt'
     }
 
     //generate command to run
