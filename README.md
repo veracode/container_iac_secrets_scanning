@@ -68,7 +68,7 @@ The basic yml
         - name: checkout
           uses: actions/checkout@v3
 
-        - name: Verracode Container/IaC/Secrets action step
+        - name: Veracode Container/IaC/Secrets action step
           uses: veracode/container_iac_secrets_scanning@v1.0.0
           with:
             vid: ${{ secrets.VID }}
@@ -93,7 +93,7 @@ Only create SBOM
         - name: checkout
           uses: actions/checkout@v3
 
-        - name: Verracode Container/IaC/Secrets action step
+        - name: Veracode Container/IaC/Secrets action step
           uses: veracode/container_iac_secrets_scanning@v1.0.0
           with:
             vid: ${{ secrets.VID }}
