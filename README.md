@@ -62,7 +62,7 @@ The basic yml
   ```yml 
   Veracode-container_iac_secrets-scan:
       runs-on: ubuntu-latest
-      name: Verracode Container/IaC/Secrets scan
+      name: Veracode Container/IaC/Secrets scan
 
       steps:
         - name: checkout
@@ -87,7 +87,7 @@ Only create SBOM
   ```yml 
   Veracode-container_iac_secrets-scan:
       runs-on: ubuntu-latest
-      name: Verracode Container/IaC/Secrets scan
+      name: Veracode Container/IaC/Secrets scan
 
       steps:
         - name: checkout
