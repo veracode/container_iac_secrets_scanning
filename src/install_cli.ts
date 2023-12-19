@@ -4,7 +4,7 @@ import { execSync,exec } from "child_process";
 
 export async function install_cli(parameters:any) {
 
-    let installCommand = `cd ..; curl -fsS https://tools.veracode.com/veracode-cli/install | sh`
+    let installCommand = `cd ..;mkdir veracode-cli; cd veracode-cli; curl -fsS https://tools.veracode.com/veracode-cli/install | sh`
     core.info('Install command :' + installCommand)
     let curlCommandOutput = execSync(installCommand)
 
@@ -15,4 +15,5 @@ export async function install_cli(parameters:any) {
         core.info('#### DEBUG END ####')
       }
     core.info(`${curlCommandOutput}`)
+
 }
