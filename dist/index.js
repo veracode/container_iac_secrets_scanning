@@ -16682,7 +16682,7 @@ const core = __importStar(__nccwpck_require__(5127));
 const child_process_1 = __nccwpck_require__(2081);
 function install_cli(parameters) {
     return __awaiter(this, void 0, void 0, function* () {
-        let installCommand = `cd ..; curl -fsS https://tools.veracode.com/veracode-cli/install | sh`;
+        let installCommand = `cd ..;mkdir veracode-cli; curl -fsS https://tools.veracode.com/veracode-cli/install | sh`;
         core.info('Install command :' + installCommand);
         let curlCommandOutput = (0, child_process_1.execSync)(installCommand);
         if (parameters.debug == "true") {
@@ -16692,31 +16692,6 @@ function install_cli(parameters) {
             core.info('#### DEBUG END ####');
         }
         core.info(`${curlCommandOutput}`);
-        if (parameters.debug == "true") {
-            let getFolders = (0, child_process_1.execSync)('cd ..;ls -la');
-            core.info('#### DEBUG START ####');
-            core.info('intall_cli.ts - get install folder');
-            core.info('command output : ' + getFolders);
-            core.info('#### DEBUG END ####');
-        }
-        //rename the veracode cli so it works on folders called veracode as well
-        let renameCLI = `cd ..; mv veracode veracode-cli`;
-        core.info('Rename command :' + renameCLI);
-        let renameCommandOutput = (0, child_process_1.execSync)(renameCLI);
-        if (parameters.debug == "true") {
-            core.info('#### DEBUG START ####');
-            core.info('intall_cli.ts - rename CLI ');
-            core.info('command output : ' + renameCommandOutput);
-            core.info('#### DEBUG END ####');
-        }
-        core.info(`${renameCommandOutput}`);
-        if (parameters.debug == "true") {
-            let getFolders = (0, child_process_1.execSync)('cd ..;ls -laR');
-            core.info('#### DEBUG START ####');
-            core.info('intall_cli.ts - get folders');
-            core.info('command output : ' + getFolders);
-            core.info('#### DEBUG END ####');
-        }
     });
 }
 exports.install_cli = install_cli;
@@ -16768,7 +16743,7 @@ const child_process_1 = __nccwpck_require__(2081);
 function run_cli(command, debug, resultsfile) {
     return __awaiter(this, void 0, void 0, function* () {
         //let scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${command} `
-        let scanCommand = `../veracode-cli ${command} `;
+        let scanCommand = `../veracode-cli/veracode ${command} `;
         core.info('Scan command :' + scanCommand);
         let curlCommandOutput = (0, child_process_1.execSync)(scanCommand);
         if (debug == "true") {
