@@ -16704,7 +16704,7 @@ function install_cli(parameters) {
         }
         core.info(`${renameCommandOutput}`);
         if (parameters.debug == "true") {
-            let getFolders = (0, child_process_1.execSync)('ls -laR');
+            let getFolders = (0, child_process_1.execSync)('cd ..;ls -laR');
             core.info('#### DEBUG START ####');
             core.info('intall_cli.ts - get folders');
             core.info('command output : ' + getFolders);
