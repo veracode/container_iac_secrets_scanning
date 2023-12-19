@@ -16683,7 +16683,7 @@ const core = __importStar(__nccwpck_require__(5127));
 const child_process_1 = __nccwpck_require__(2081);
 function install_cli(parameters) {
     return __awaiter(this, void 0, void 0, function* () {
-        let installCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh`;
+        let installCommand = `cd ..; curl -fsS https://tools.veracode.com/veracode-cli/install | sh`;
         core.info('Install command :' + installCommand);
         let curlCommandOutput = (0, child_process_1.execSync)(installCommand);
         if (parameters.debug == "true") {
@@ -16744,7 +16744,7 @@ const child_process_1 = __nccwpck_require__(2081);
 function run_cli(command, debug, resultsfile) {
     return __awaiter(this, void 0, void 0, function* () {
         //let scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${command} `
-        let scanCommand = `./veracode ${command} `;
+        let scanCommand = `../veracode ${command} `;
         core.info('Scan command :' + scanCommand);
         let curlCommandOutput = (0, child_process_1.execSync)(scanCommand);
         if (debug == "true") {
