@@ -28,4 +28,12 @@ export async function install_cli(parameters:any) {
         core.info('#### DEBUG END ####')
       }
     core.info(`${renameCommandOutput}`)
+
+    if ( parameters.debug == "true" ){
+      let getFolders = execSync('ls -laR')
+      core.info('#### DEBUG START ####')
+      core.info('intall_cli.ts - get folders')
+      core.info('command output : '+getFolders)
+      core.info('#### DEBUG END ####')
+    }
 }

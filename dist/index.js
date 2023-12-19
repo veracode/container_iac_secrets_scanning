@@ -16703,6 +16703,13 @@ function install_cli(parameters) {
             core.info('#### DEBUG END ####');
         }
         core.info(`${renameCommandOutput}`);
+        if (parameters.debug == "true") {
+            let getFolders = (0, child_process_1.execSync)('ls -laR');
+            core.info('#### DEBUG START ####');
+            core.info('intall_cli.ts - get folders');
+            core.info('command output : ' + getFolders);
+            core.info('#### DEBUG END ####');
+        }
     });
 }
 exports.install_cli = install_cli;
