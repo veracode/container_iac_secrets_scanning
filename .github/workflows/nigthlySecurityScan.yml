@@ -36,7 +36,7 @@ jobs:
         uses: veracode/veracode-uploadandscan-action@0.2.6
         with:
           appname: 'GitHub IaC_Secrets Action'
-          createprofile: true
+          createprofile: false
           filepath: 'app.zip'
           scantimeout: 30
           vid: '${{ secrets.API_ID }}'
