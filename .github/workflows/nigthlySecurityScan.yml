@@ -35,8 +35,8 @@ jobs:
       - name: Run Veracode Policy scan
         uses: veracode/veracode-uploadandscan-action@0.2.6
         with:
-          appname: 'GitHub IaC/Secrets Action'
-          createprofile: true
+          appname: 'GitHub IaC_Secrets Action'
+          createprofile: false
           filepath: 'app.zip'
           scantimeout: 30
           vid: '${{ secrets.API_ID }}'
