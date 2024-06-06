@@ -1,5 +1,5 @@
 import * as core from "@actions/core"
-import * as artifact from '@actions/artifact'
+const { DefaultArtifactClient } = require('@actions/artifact');
 
 export async function store_artifacts(resultfiles:any, debug:any) {
 
@@ -10,7 +10,7 @@ export async function store_artifacts(resultfiles:any, debug:any) {
         core.info('Artifact name : '+resultfiles)
         core.info('#### DEBUG END ####')
     }
-    const artifactClient = artifact.create()
+    
     const artifactName = 'Veracode Container IaC Secrets Scanning Results';
     //const files = [resultfiles];
     
@@ -18,6 +18,8 @@ export async function store_artifacts(resultfiles:any, debug:any) {
     const options = {
         continueOnError: true
     }
+    
+    const artifactClient = new DefaultArtifactClient();
     const uploadResult = await artifactClient.uploadArtifact(artifactName, resultfiles, rootDirectory, options)
 
 }
