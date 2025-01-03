@@ -96990,9 +96990,6 @@ function run_cli(command, debug, resultsfile, failBuildOnError) {
     return __awaiter(this, void 0, void 0, function* () {
         //let scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${command} `
         try {
-            if (command === "failTest") {
-                throw new Error('Simulated failure for testing.');
-            }
             let scanCommand = `../veracode-cli/veracode ${command} `;
             core.info('Scan command :' + scanCommand);
             let curlCommandOutput = (0, child_process_1.execSync)(scanCommand);
