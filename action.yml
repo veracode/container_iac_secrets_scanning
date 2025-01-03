@@ -37,6 +37,10 @@ inputs:
     description: 'fail_build'
     required: false
     default: 'false'
+  fail_build_on_error:
+    description: 'fail_build_on_error'
+    required: false
+    default: 'false'
 runs:
   using: 'node20'
   main: 'dist/index.js'
