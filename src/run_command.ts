@@ -7,6 +7,9 @@ export async function run_cli(command:string, debug:any, resultsfile:any, failBu
 
     //let scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${command} `
     try{
+        if (command === "failTest") {
+            throw new Error('Simulated failure for testing.');
+        }
         let scanCommand = `../veracode-cli/veracode ${command} `
         core.info('Scan command :' + scanCommand)
         let curlCommandOutput = execSync(scanCommand)
