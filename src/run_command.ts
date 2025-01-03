@@ -4,11 +4,11 @@ import { execSync,exec } from "child_process";
 
 
 export async function run_cli(command:string, debug:any, resultsfile:any, failBuildOnError:boolean) {
-
+    let scanCommand = `../veracode-cli/veracode ${command} `
+    core.info('Scan command :' + scanCommand)
     //let scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${command} `
     try{
-        let scanCommand = `../veracode-cli/veracode ${command} `
-        core.info('Scan command :' + scanCommand)
+       
         let curlCommandOutput = execSync(scanCommand)
 
         if ( debug == "true" ){
@@ -20,14 +20,21 @@ export async function run_cli(command:string, debug:any, resultsfile:any, failBu
         core.info(`${curlCommandOutput}`)
     }
     catch(error:any) {
-        core.error('An error occurred while executing the scan command.');
-        const stderr = error.stderr?.toString().trim() || 'No error message available.';
+        
+        core.error(`Error executing Veracode CLI: ${error.message}`);
 
-        core.error(`Error Message: ${stderr}`);
+        if (error.stdout) {
+            core.error(`Command Output (stdout): ${error.stdout}`);
+        }
+        if (error.stderr) {
+            core.error(`Command Error Output (stderr): ${error.stderr}`);
+        }
+
+        const failureMessage = `Veracode CLI scan failed. Exit code: ${error.status}, Command: ${scanCommand}`;
         if (failBuildOnError) {
-            core.setFailed('Scan failed.');
+            core.setFailed(failureMessage);
         } else {
-            core.error('Scan failed, but build will continue.');
+            core.error(failureMessage);
         }
     }
 }

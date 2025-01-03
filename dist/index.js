@@ -96986,12 +96986,11 @@ exports.run_cli = void 0;
 const core = __importStar(__nccwpck_require__(5672));
 const child_process_1 = __nccwpck_require__(2081);
 function run_cli(command, debug, resultsfile, failBuildOnError) {
-    var _a;
     return __awaiter(this, void 0, void 0, function* () {
+        let scanCommand = `../veracode-cli/veracode ${command} `;
+        core.info('Scan command :' + scanCommand);
         //let scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${command} `
         try {
-            let scanCommand = `../veracode-cli/veracode ${command} `;
-            core.info('Scan command :' + scanCommand);
             let curlCommandOutput = (0, child_process_1.execSync)(scanCommand);
             if (debug == "true") {
                 core.info('#### DEBUG START ####');
@@ -97002,14 +97001,19 @@ function run_cli(command, debug, resultsfile, failBuildOnError) {
             core.info(`${curlCommandOutput}`);
         }
         catch (error) {
-            core.error('An error occurred while executing the scan command.');
-            const stderr = ((_a = error.stderr) === null || _a === void 0 ? void 0 : _a.toString().trim()) || 'No error message available.';
-            core.error(`Error Message: ${stderr}`);
+            core.error(`Error executing Veracode CLI: ${error.message}`);
+            if (error.stdout) {
+                core.error(`Command Output (stdout): ${error.stdout}`);
+            }
+            if (error.stderr) {
+                core.error(`Command Error Output (stderr): ${error.stderr}`);
+            }
+            const failureMessage = `Veracode CLI scan failed. Exit code: ${error.status}, Command: ${scanCommand}`;
             if (failBuildOnError) {
-                core.setFailed('Scan failed.');
+                core.setFailed(failureMessage);
             }
             else {
-                core.error('Scan failed, but build will continue.');
+                core.error(failureMessage);
             }
         }
     });
