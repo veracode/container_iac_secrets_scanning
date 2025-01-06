@@ -33,6 +33,7 @@ export async function run_cli(command:string, debug:any, resultsfile:any, failBu
         const failureMessage = `Veracode CLI scan failed. Exit code: ${error.status}, Command: ${scanCommand}`;
         if (failBuildOnError) {
             core.setFailed(failureMessage);
+            core.info(`Note: Build failed due to break_build_on_error flag being set to true.`)
         } else {
             core.error(failureMessage);
         }
