@@ -4,7 +4,7 @@ import { execSync,exec } from "child_process";
 
 
 export async function run_cli(command:string, debug:any, resultsfile:any, failBuildOnError:boolean) {
-    let scanCommand = `../veracode-cli/veracode ${command} -v`
+    let scanCommand = `../veracode-cli/veracode ${command}`
     core.info('Scan command :' + scanCommand)
     //let scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${command} `
     try{

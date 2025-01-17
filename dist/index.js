@@ -96987,7 +96987,7 @@ const core = __importStar(__nccwpck_require__(5672));
 const child_process_1 = __nccwpck_require__(2081);
 function run_cli(command, debug, resultsfile, failBuildOnError) {
     return __awaiter(this, void 0, void 0, function* () {
-        let scanCommand = `../veracode-cli/veracode ${command} -v`;
+        let scanCommand = `../veracode-cli/veracode ${command}`;
         core.info('Scan command :' + scanCommand);
         //let scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${command} `
         try {
