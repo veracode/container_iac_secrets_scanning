@@ -14,8 +14,7 @@ const format = core.getInput("format", {required:true})
 const type = core.getInput("type", {required:true})
 const debug = core.getInput("debug", {required:false})
 const fail_build = core.getInput("fail_build", {required:false})
-
-
+const fail_build_on_error= core.getInput("fail_build_on_error", {required:false})
 core.info('check if we run on a pull request')
 let pullRequest:any = process.env.GITHUB_REF
 
@@ -58,7 +57,8 @@ const parameters = {
     fail_build: fail_build,
     pr_context: pr_context,
     isPR: isPR,
-    pr_commentID: pr_commentID
+    pr_commentID: pr_commentID,
+    fail_build_on_error:fail_build_on_error
 }
 
 ContainerScan(parameters)
