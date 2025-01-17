@@ -15,7 +15,6 @@ const type = core.getInput("type", {required:true})
 const debug = core.getInput("debug", {required:false})
 const fail_build = core.getInput("fail_build", {required:false})
 const fail_build_on_error= core.getInput("fail_build_on_error", {required:false})
-console.log("fail_build_on_error: ", typeof fail_build_on_error)
 core.info('check if we run on a pull request')
 let pullRequest:any = process.env.GITHUB_REF
 
