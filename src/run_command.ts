@@ -3,7 +3,7 @@ import * as artifact from '@actions/artifact'
 import { execSync,exec } from "child_process";
 
 
-export async function run_cli(command:string, debug:any, resultsfile:any, failBuildOnError:boolean) {
+export async function run_cli(command:string, debug:any, resultsfile:any, failBuildOnError:any) {
     let scanCommand = `../veracode-cli/veracode ${command} `
     core.info('Scan command :' + scanCommand)
     //let scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${command} `
@@ -21,7 +21,8 @@ export async function run_cli(command:string, debug:any, resultsfile:any, failBu
     }
     catch(error:any) {
         const failureMessage = `Veracode CLI scan failed. Exit code: ${error.status}, Message:  ${error.message} Command: ${scanCommand}`;
-        if (failBuildOnError) {
+        const failBuildOnErrorBool = String(failBuildOnError).toLowerCase() === "true";
+        if (failBuildOnErrorBool) {
             core.setFailed(failureMessage);
             core.info(`Note: Build failed due to break_build_on_error flag being set to true.`)
         } else {
