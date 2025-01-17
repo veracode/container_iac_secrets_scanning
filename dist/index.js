@@ -97009,7 +97009,7 @@ function run_cli(command, debug, resultsfile, failBuildOnError) {
                 core.error(`Command Error Output (stderr): ${error.stderr}`);
             }
             const failureMessage = `Veracode CLI scan failed. Exit code: ${error.status}, Command: ${scanCommand}`;
-            console.log('failBuildOnError', failBuildOnError);
+            console.log('failBuildOnError type', typeof failBuildOnError);
             if (failBuildOnError === true) {
                 core.setFailed(failureMessage);
                 core.info(`Note: Build failed due to break_build_on_error flag being set to true.`);
