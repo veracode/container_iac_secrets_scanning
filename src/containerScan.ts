@@ -72,7 +72,7 @@ export async function ContainerScan(parameters:any) {
 
       //store artifacts
       let files = ['results.json','results.txt','sbom_cyclonedx_xml.xml','sbom_cyclonedx_json.json','sbom_spdx_tag_value.json','sbom_spdx_json.json','sbom_github.json']
-      let storeArtifacts = await store_artifacts(files,parameters.debug)
+      let storeArtifacts = await store_artifacts(files,parameters.debug, parameters?.platformType)
     }
     else {
       async function runParallelFunctions(): Promise<void> {
@@ -88,7 +88,7 @@ export async function ContainerScan(parameters:any) {
 
       //store artifacts
       let files = ['results.txt','sbom_cyclonedx_xml.xml','sbom_cyclonedx_json.json','sbom_spdx_tag_value.json','sbom_spdx_json.json','sbom_github.json']
-      let storeArtifacts = await store_artifacts(files,parameters.debug)
+      let storeArtifacts = await store_artifacts(files,parameters.debug, parameters?.platformType)
 
     }
 
@@ -220,7 +220,7 @@ export async function ContainerScan(parameters:any) {
     //generate command to run
     let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${filename}`
     run_cli(scanCommandOriginal,parameters.debug,filename,parameters.fail_build_on_error)
-    let storeArtifacts = await store_artifacts(resultFile,parameters.debug)
+    let storeArtifacts = await store_artifacts(resultFile,parameters.debug, parameters?.platformType)
 
   }
 
