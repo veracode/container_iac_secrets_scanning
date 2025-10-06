@@ -100245,8 +100245,7 @@ function store_artifacts(resultfiles, debug, platformType) {
             const uploadResult = yield artifactClient.uploadArtifact(artifactName, resultfiles, rootDirectory, options);
         }
         catch (error) {
-            core.info(`Error while uploading ${artifactName} artifact  : `);
-            core.error(error);
+            core.info(`Error while creating the ${artifactName} artifact ${error}`);
         }
     });
 }
