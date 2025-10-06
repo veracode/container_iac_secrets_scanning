@@ -29,6 +29,12 @@ export async function store_artifacts(resultfiles:any, debug:any, platformType: 
         artifactClient = new DefaultArtifactClient();
         core.info(`Initialized the artifact object using version V2.`);
     }
-    const uploadResult = await artifactClient.uploadArtifact(artifactName, resultfiles, rootDirectory, options)
+    
+    try {
+        const uploadResult = await artifactClient.uploadArtifact(artifactName, resultfiles, rootDirectory, options)
+    } catch (error: any) {
+        core.info("Error while uploading artifact in  : ");
+        core.error(error);
+    }
 
 }

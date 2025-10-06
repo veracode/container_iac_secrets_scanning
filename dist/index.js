@@ -100241,7 +100241,13 @@ function store_artifacts(resultfiles, debug, platformType) {
             artifactClient = new DefaultArtifactClient();
             core.info(`Initialized the artifact object using version V2.`);
         }
-        const uploadResult = yield artifactClient.uploadArtifact(artifactName, resultfiles, rootDirectory, options);
+        try {
+            const uploadResult = yield artifactClient.uploadArtifact(artifactName, resultfiles, rootDirectory, options);
+        }
+        catch (error) {
+            core.info("Error while uploading artifact in  : ");
+            core.error(error);
+        }
     });
 }
 exports.store_artifacts = store_artifacts;
