@@ -33,8 +33,7 @@ export async function store_artifacts(resultfiles:any, debug:any, platformType: 
     try {
         const uploadResult = await artifactClient.uploadArtifact(artifactName, resultfiles, rootDirectory, options)
     } catch (error: any) {
-        core.info("Error while uploading artifact in  : ");
+        core.info(`Error while uploading ${artifactName} artifact  : `);
         core.error(error);
     }
-
 }
