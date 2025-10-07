@@ -41,6 +41,10 @@ inputs:
     description: 'fail_build_on_error'
     required: false
     default: 'false'
+  platformType:
+    description: 'Specifies the platform environment type — use CLOUD for GitHub.com or ENTERPRISE for GitHub Enterprise Server (GHES).'
+    default: 'CLOUD'
+    required: false
 runs:
   using: 'node20'
   main: 'dist/index.js'
