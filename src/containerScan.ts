@@ -128,7 +128,8 @@ export async function ContainerScan(parameters:any) {
       core.info("This run is part of a PR, should add some PR comment")
 
       try {
-        const octokit = github.getOctokit(parameters.token);
+        const baseUrl = process.env.GITHUB_API_URL || 'https://api.github.com';
+        const octokit = github.getOctokit(parameters.token, { baseUrl });
 
         const context = github.context
         const repository:any = process.env.GITHUB_REPOSITORY
