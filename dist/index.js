@@ -99784,7 +99784,7 @@ function ContainerScan(parameters) {
                 results_file = 'results.txt';
             }
             //generate command to run
-            let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${results_file}`;
+            let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${results_file} --temp ./`;
             if (parameters.debug == "true") {
                 core.info('#### DEBUG START ####');
                 core.info('containerScan.ts - original scan command');
@@ -99807,7 +99807,7 @@ function ContainerScan(parameters) {
                 function runParallelFunctions() {
                     return __awaiter(this, void 0, void 0, function* () {
                         //also run the scan to get text output
-                        let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format table --output results.txt`;
+                        let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format table --output results.txt --temp ./`;
                         const promises = [(0, run_command_1.run_cli)(scanCommandOriginal, parameters.debug, 'results.json', parameters.fail_build_on_error), (0, run_command_1.run_cli)(scanCommandText, parameters.debug, 'results.txt', parameters.fail_build_on_error), (0, run_command_1.run_cli)(sbom_cyclonedx_xml, parameters.debug, sbom_cyclonedx_xml_results_file, parameters.fail_build_on_error), (0, run_command_1.run_cli)(sbom_cyclonedx_json, parameters.debug, sbom_cyclonedx_json_results_file, parameters.fail_build_on_error), (0, run_command_1.run_cli)(sbom_spdx_tag_value, parameters.debug, sbom_spdx_tag_value_results_file, parameters.fail_build_on_error), (0, run_command_1.run_cli)(sbom_spdx_json, parameters.debug, sbom_spdx_json_results_file, parameters.fail_build_on_error), (0, run_command_1.run_cli)(sbom_github, parameters.debug, sbom_github_results_file, parameters.fail_build_on_error)];
                         yield Promise.all(promises);
                         core.info('All functions completed in parallel');
@@ -100082,18 +100082,32 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.install_cli = void 0;
 const core = __importStar(__nccwpck_require__(3962));
 const child_process_1 = __nccwpck_require__(5317);
+const runnerOS = process.env.RUNNER_OS;
 function install_cli(parameters) {
     return __awaiter(this, void 0, void 0, function* () {
-        let installCommand = `cd ..;mkdir veracode-cli; cd veracode-cli; curl -fsS https://tools.veracode.com/veracode-cli/install | sh`;
-        core.info('Install command :' + installCommand);
-        let curlCommandOutput = (0, child_process_1.execSync)(installCommand);
-        if (parameters.debug == "true") {
-            core.info('#### DEBUG START ####');
-            core.info('intall_cli.ts - command output');
-            core.info('command output : ' + curlCommandOutput);
-            core.info('#### DEBUG END ####');
+        if (runnerOS == 'Windows') {
+            const psCommand = `Set-ExecutionPolicy AllSigned -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://tools.veracode.com/veracode-cli/install.ps1'))`;
+            const curlCommandOutput = (0, child_process_1.execSync)(`powershell.exe -NoProfile -Command "${psCommand}"`, { stdio: 'inherit' });
+            if (parameters.debug == "true") {
+                core.info('#### DEBUG START ####');
+                core.info('intall_cli.ts - command output');
+                core.info('command output : ' + curlCommandOutput);
+                core.info('#### DEBUG END ####');
+            }
+            core.info(`${curlCommandOutput}`);
         }
-        core.info(`${curlCommandOutput}`);
+        else {
+            let installCommand = `cd ..;mkdir veracode-cli; cd veracode-cli; curl -fsS https://tools.veracode.com/veracode-cli/install | sh`;
+            core.info('Install command :' + installCommand);
+            let curlCommandOutput = (0, child_process_1.execSync)(installCommand);
+            if (parameters.debug == "true") {
+                core.info('#### DEBUG START ####');
+                core.info('intall_cli.ts - command output');
+                core.info('command output : ' + curlCommandOutput);
+                core.info('#### DEBUG END ####');
+            }
+            core.info(`${curlCommandOutput}`);
+        }
     });
 }
 exports.install_cli = install_cli;
@@ -100138,34 +100152,68 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run_cli = void 0;
 const core = __importStar(__nccwpck_require__(3962));
 const child_process_1 = __nccwpck_require__(5317);
+const path_1 = __importDefault(__nccwpck_require__(6928));
+const runnerOS = process.env.RUNNER_OS;
 function run_cli(command, debug, resultsfile, failBuildOnError) {
+    var _a;
     return __awaiter(this, void 0, void 0, function* () {
-        let scanCommand = `../veracode-cli/veracode ${command}`;
-        core.info('Scan command :' + scanCommand);
-        //let scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${command} `
-        try {
-            let curlCommandOutput = (0, child_process_1.execSync)(scanCommand);
-            if (debug == "true") {
-                core.info('#### DEBUG START ####');
-                core.info('run_command.ts - command output');
-                core.info('command output : ' + curlCommandOutput);
-                core.info('#### DEBUG END ####');
+        if (runnerOS == 'Windows') {
+            const appdata = (_a = process.env.APPDATA) !== null && _a !== void 0 ? _a : "";
+            const cliPathVera = path_1.default.join(appdata, 'veracode');
+            const cliPath = path_1.default.join(cliPathVera, 'veracode.exe');
+            try {
+                let curlCommandOutput = (0, child_process_1.execSync)(`powershell "${cliPath} ${command}"`, { stdio: 'inherit' });
+                if (debug == "true") {
+                    core.info('#### DEBUG START ####');
+                    core.info('run_command.ts - command output');
+                    core.info('command output : ' + curlCommandOutput);
+                    core.info('#### DEBUG END ####');
+                }
+                //core.info(`${curlCommandOutput}`)
             }
-            core.info(`${curlCommandOutput}`);
+            catch (error) {
+                const failureMessage = `Veracode CLI scan failed. Exit code: ${error.status}, Command: ${command}`;
+                const failBuildOnErrorBool = String(failBuildOnError).toLowerCase() === "true";
+                if (failBuildOnErrorBool) {
+                    core.setFailed(failureMessage);
+                    core.info(`Note: Build failed due to break_build_on_error flag being set to true.`);
+                }
+                else {
+                    core.error(failureMessage);
+                }
+            }
         }
-        catch (error) {
-            const failureMessage = `Veracode CLI scan failed. Exit code: ${error.status}, Command: ${scanCommand}`;
-            const failBuildOnErrorBool = String(failBuildOnError).toLowerCase() === "true";
-            if (failBuildOnErrorBool) {
-                core.setFailed(failureMessage);
-                core.info(`Note: Build failed due to break_build_on_error flag being set to true.`);
+        else {
+            let scanCommand = `../veracode-cli/veracode ${command}`;
+            core.info('Scan command :' + scanCommand);
+            //let scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${command} `
+            try {
+                let curlCommandOutput = (0, child_process_1.execSync)(scanCommand);
+                if (debug == "true") {
+                    core.info('#### DEBUG START ####');
+                    core.info('run_command.ts - command output');
+                    core.info('command output : ' + curlCommandOutput);
+                    core.info('#### DEBUG END ####');
+                }
+                core.info(`${curlCommandOutput}`);
             }
-            else {
-                core.error(failureMessage);
+            catch (error) {
+                const failureMessage = `Veracode CLI scan failed. Exit code: ${error.status}, Command: ${scanCommand}`;
+                const failBuildOnErrorBool = String(failBuildOnError).toLowerCase() === "true";
+                if (failBuildOnErrorBool) {
+                    core.setFailed(failureMessage);
+                    core.info(`Note: Build failed due to break_build_on_error flag being set to true.`);
+                }
+                else {
+                    core.error(failureMessage);
+                }
             }
         }
     });

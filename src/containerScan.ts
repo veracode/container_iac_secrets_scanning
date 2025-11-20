@@ -29,7 +29,7 @@ export async function ContainerScan(parameters:any) {
     }
 
     //generate command to run
-    let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${results_file}`
+    let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${results_file} --temp ./`
     
     if ( parameters.debug == "true" ){
       core.info('#### DEBUG START ####')
@@ -59,7 +59,7 @@ export async function ContainerScan(parameters:any) {
     if ( parameters.format == "json" ){
       async function runParallelFunctions(): Promise<void> {
         //also run the scan to get text output
-        let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format table --output results.txt`
+        let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format table --output results.txt --temp ./`
         const promises = [run_cli(scanCommandOriginal,parameters.debug,'results.json',parameters.fail_build_on_error), run_cli(scanCommandText,parameters.debug,'results.txt',parameters.fail_build_on_error), run_cli(sbom_cyclonedx_xml,parameters.debug,sbom_cyclonedx_xml_results_file,parameters.fail_build_on_error), run_cli(sbom_cyclonedx_json,parameters.debug,sbom_cyclonedx_json_results_file,parameters.fail_build_on_error), run_cli(sbom_spdx_tag_value,parameters.debug,sbom_spdx_tag_value_results_file,parameters.fail_build_on_error), run_cli(sbom_spdx_json,parameters.debug,sbom_spdx_json_results_file,parameters.fail_build_on_error), run_cli(sbom_github,parameters.debug,sbom_github_results_file,parameters.fail_build_on_error)];
         await Promise.all(promises);
         core.info('All functions completed in parallel');
