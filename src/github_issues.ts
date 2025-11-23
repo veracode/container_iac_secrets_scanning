@@ -55,6 +55,9 @@ interface MisconfigurationResult {
 interface ResultsJson {
   "policy-results"?: PolicyResult[]
   misconfigurations?: MisconfigurationResult[]
+  configs?: {
+    Results?: MisconfigurationResult[]
+  }
 }
 
 export async function generateGitHubIssues(
@@ -398,11 +401,19 @@ interface PolicyRelevantFinding {
 function extractPolicyRelevantFindings(results: ResultsJson, debug?: string): PolicyRelevantFinding[] {
   const findings: PolicyRelevantFinding[] = []
 
-  // Get all misconfigurations
-  const allMisconfigurations = results.misconfigurations || []
+  // Get all misconfigurations - try both possible locations
+  // The JSON structure uses "configs.Results" not "misconfigurations"
+  const allMisconfigurations = results.configs?.Results || results.misconfigurations || []
   
   if (debug === "true") {
     core.info(`Found ${allMisconfigurations.length} misconfiguration result groups`)
+    if (results.configs?.Results) {
+      core.info(`Using configs.Results array`)
+    } else if (results.misconfigurations) {
+      core.info(`Using misconfigurations array`)
+    } else {
+      core.info(`No misconfigurations found in either location`)
+    }
   }
 
   // Simply iterate through all misconfigurations and extract those with Status: "FAIL"

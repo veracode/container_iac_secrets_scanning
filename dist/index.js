@@ -100130,12 +100130,13 @@ function generateCodeScanningAlerts(resultsJsonPath, outputPath, debug) {
 }
 exports.generateCodeScanningAlerts = generateCodeScanningAlerts;
 function extractPolicyRelevantFindings(results) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e;
     const findings = [];
     // Get policy failures
     const policyFailures = ((_b = (_a = results["policy-results"]) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.failures) || [];
-    // Get all misconfigurations
-    const allMisconfigurations = results.misconfigurations || [];
+    // Get all misconfigurations - try both possible locations
+    // The JSON structure uses "configs.Results" not "misconfigurations"
+    const allMisconfigurations = ((_c = results.configs) === null || _c === void 0 ? void 0 : _c.Results) || results.misconfigurations || [];
     // Create a map of file -> title -> misconfiguration for quick lookup
     const misconfigMap = new Map();
     for (const misconfigResult of allMisconfigurations) {
@@ -100173,8 +100174,8 @@ function extractPolicyRelevantFindings(results) {
                         description: misconfig.Description,
                         message: misconfig.Message,
                         resolution: misconfig.Resolution,
-                        startLine: (_c = misconfig.CauseMetadata) === null || _c === void 0 ? void 0 : _c.StartLine,
-                        endLine: (_d = misconfig.CauseMetadata) === null || _d === void 0 ? void 0 : _d.EndLine,
+                        startLine: (_d = misconfig.CauseMetadata) === null || _d === void 0 ? void 0 : _d.StartLine,
+                        endLine: (_e = misconfig.CauseMetadata) === null || _e === void 0 ? void 0 : _e.EndLine,
                         id: misconfig.ID || misconfig.AVDID,
                         primaryURL: misconfig.PrimaryURL
                     });
@@ -100641,12 +100642,22 @@ function isDuplicateIssue(existingIssues, file, title, avdid) {
     });
 }
 function extractPolicyRelevantFindings(results, debug) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r, _s;
     const findings = [];
-    // Get all misconfigurations
-    const allMisconfigurations = results.misconfigurations || [];
+    // Get all misconfigurations - try both possible locations
+    // The JSON structure uses "configs.Results" not "misconfigurations"
+    const allMisconfigurations = ((_a = results.configs) === null || _a === void 0 ? void 0 : _a.Results) || results.misconfigurations || [];
     if (debug === "true") {
         core.info(`Found ${allMisconfigurations.length} misconfiguration result groups`);
+        if ((_b = results.configs) === null || _b === void 0 ? void 0 : _b.Results) {
+            core.info(`Using configs.Results array`);
+        }
+        else if (results.misconfigurations) {
+            core.info(`Using misconfigurations array`);
+        }
+        else {
+            core.info(`No misconfigurations found in either location`);
+        }
     }
     // Simply iterate through all misconfigurations and extract those with Status: "FAIL"
     // These are the policy-relevant findings
@@ -100663,7 +100674,7 @@ function extractPolicyRelevantFindings(results, debug) {
             const title = (misconfig.Title || misconfig.ID || 'Unknown').trim();
             const severity = misconfig.Severity || 'UNKNOWN';
             // Extract all available information directly from the misconfiguration
-            const codeLines = ((_c = (_b = (_a = misconfig.CauseMetadata) === null || _a === void 0 ? void 0 : _a.Code) === null || _b === void 0 ? void 0 : _b.Lines) === null || _c === void 0 ? void 0 : _c.filter(line => {
+            const codeLines = ((_e = (_d = (_c = misconfig.CauseMetadata) === null || _c === void 0 ? void 0 : _c.Code) === null || _d === void 0 ? void 0 : _d.Lines) === null || _e === void 0 ? void 0 : _e.filter(line => {
                 // Include lines that have content
                 if (!line.Content || line.Content.trim().length === 0) {
                     return false;
@@ -100676,7 +100687,7 @@ function extractPolicyRelevantFindings(results, debug) {
             // If we have too many lines, prioritize IsCause=true lines
             let finalCodeLines = codeLines;
             if (codeLines && codeLines.length > 20) {
-                const causeLines = ((_f = (_e = (_d = misconfig.CauseMetadata) === null || _d === void 0 ? void 0 : _d.Code) === null || _e === void 0 ? void 0 : _e.Lines) === null || _f === void 0 ? void 0 : _f.filter(line => line.IsCause === true && line.Content && line.Content.trim().length > 0).map(line => ({
+                const causeLines = ((_h = (_g = (_f = misconfig.CauseMetadata) === null || _f === void 0 ? void 0 : _f.Code) === null || _g === void 0 ? void 0 : _g.Lines) === null || _h === void 0 ? void 0 : _h.filter(line => line.IsCause === true && line.Content && line.Content.trim().length > 0).map(line => ({
                     number: line.Number,
                     content: line.Content.trim()
                 }))) || [];
@@ -100688,16 +100699,16 @@ function extractPolicyRelevantFindings(results, debug) {
                 file,
                 title,
                 severity,
-                description: ((_g = misconfig.Description) === null || _g === void 0 ? void 0 : _g.trim()) || undefined,
-                message: ((_h = misconfig.Message) === null || _h === void 0 ? void 0 : _h.trim()) || undefined,
-                resolution: ((_j = misconfig.Resolution) === null || _j === void 0 ? void 0 : _j.trim()) || undefined,
-                startLine: (_k = misconfig.CauseMetadata) === null || _k === void 0 ? void 0 : _k.StartLine,
-                endLine: (_l = misconfig.CauseMetadata) === null || _l === void 0 ? void 0 : _l.EndLine,
+                description: ((_j = misconfig.Description) === null || _j === void 0 ? void 0 : _j.trim()) || undefined,
+                message: ((_k = misconfig.Message) === null || _k === void 0 ? void 0 : _k.trim()) || undefined,
+                resolution: ((_l = misconfig.Resolution) === null || _l === void 0 ? void 0 : _l.trim()) || undefined,
+                startLine: (_m = misconfig.CauseMetadata) === null || _m === void 0 ? void 0 : _m.StartLine,
+                endLine: (_o = misconfig.CauseMetadata) === null || _o === void 0 ? void 0 : _o.EndLine,
                 id: misconfig.ID || undefined,
                 avdid: misconfig.AVDID || undefined,
                 primaryURL: misconfig.PrimaryURL || undefined,
-                provider: ((_m = misconfig.CauseMetadata) === null || _m === void 0 ? void 0 : _m.Provider) || undefined,
-                service: ((_o = misconfig.CauseMetadata) === null || _o === void 0 ? void 0 : _o.Service) || undefined,
+                provider: ((_p = misconfig.CauseMetadata) === null || _p === void 0 ? void 0 : _p.Provider) || undefined,
+                service: ((_q = misconfig.CauseMetadata) === null || _q === void 0 ? void 0 : _q.Service) || undefined,
                 namespace: misconfig.Namespace || undefined,
                 query: misconfig.Query || undefined,
                 references: misconfig.References && misconfig.References.length > 0
@@ -100709,7 +100720,7 @@ function extractPolicyRelevantFindings(results, debug) {
             if (debug === "true") {
                 core.info(`Extracted finding: file="${file}", title="${title}", severity="${severity}"`);
                 core.info(`  - description: ${!!finding.description}, message: ${!!finding.message}, resolution: ${!!finding.resolution}`);
-                core.info(`  - codeLines: ${((_p = finding.codeLines) === null || _p === void 0 ? void 0 : _p.length) || 0}, references: ${((_q = finding.references) === null || _q === void 0 ? void 0 : _q.length) || 0}`);
+                core.info(`  - codeLines: ${((_r = finding.codeLines) === null || _r === void 0 ? void 0 : _r.length) || 0}, references: ${((_s = finding.references) === null || _s === void 0 ? void 0 : _s.length) || 0}`);
             }
             findings.push(finding);
         }

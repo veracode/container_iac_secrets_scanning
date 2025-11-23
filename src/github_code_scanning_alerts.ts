@@ -46,6 +46,9 @@ interface MisconfigurationResult {
 interface ResultsJson {
   "policy-results"?: PolicyResult[]
   misconfigurations?: MisconfigurationResult[]
+  configs?: {
+    Results?: MisconfigurationResult[]
+  }
 }
 
 interface PolicyRelevantFinding {
@@ -106,8 +109,9 @@ function extractPolicyRelevantFindings(results: ResultsJson): PolicyRelevantFind
   // Get policy failures
   const policyFailures = results["policy-results"]?.[0]?.failures || []
 
-  // Get all misconfigurations
-  const allMisconfigurations = results.misconfigurations || []
+  // Get all misconfigurations - try both possible locations
+  // The JSON structure uses "configs.Results" not "misconfigurations"
+  const allMisconfigurations = results.configs?.Results || results.misconfigurations || []
 
   // Create a map of file -> title -> misconfiguration for quick lookup
   const misconfigMap = new Map<string, Map<string, Misconfiguration[]>>()
