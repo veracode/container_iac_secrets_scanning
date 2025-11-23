@@ -100572,6 +100572,21 @@ function getVeracodeSeverityLabel(severity) {
             return 'VeracodeFlaw: Informational';
     }
 }
+function getSeverityColor(severity) {
+    // Map severity to color (matching label colors)
+    switch (severity.toUpperCase()) {
+        case 'CRITICAL':
+            return 'd92b85'; // Very High - pink
+        case 'HIGH':
+            return 'e61f25'; // High - red
+        case 'MEDIUM':
+            return 'fd7333'; // Medium - orange
+        case 'LOW':
+            return 'ffcc33'; // Low - yellow
+        default:
+            return '8dbd3e'; // Informational - green
+    }
+}
 function getExistingIssues(octokit, owner, repo, debug) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -100799,15 +100814,44 @@ function generateIssueBody(findings, debug) {
             core.info(`Available fields: codeLines=${!!finding.codeLines && finding.codeLines.length > 0}, references=${!!finding.references && finding.references.length > 0}`);
         }
         let body = `## Infrastructure as Code Misconfiguration\n\n`;
-        // File Information - Always show
+        // Severity box at the top (colored, text always black)
+        const severityColor = getSeverityColor(finding.severity);
+        body += `<div style="background-color: #${severityColor}; padding: 8px 12px; border-radius: 4px; display: inline-block; margin-bottom: 16px;">`;
+        body += `<strong style="color: #000000;">Severity: ${finding.severity}</strong>`;
+        body += `</div>\n\n`;
+        // File Information - Always show with line numbers from JSON
         const uniqueFiles = [...new Set(findings.map(f => f.file))];
         if (uniqueFiles.length === 1) {
-            body += `**File:** \`${finding.file}\`\n\n`;
+            const fileFinding = findings.find(f => f.file === finding.file) || finding;
+            let fileLine = `**File:** \`${finding.file}\``;
+            if (fileFinding.startLine !== undefined) {
+                fileLine += ` (Lines ${fileFinding.startLine}`;
+                if (fileFinding.endLine !== undefined && fileFinding.endLine !== fileFinding.startLine) {
+                    fileLine += `-${fileFinding.endLine}`;
+                }
+                fileLine += `)`;
+            }
+            body += `${fileLine}\n\n`;
         }
         else {
             body += `**Affected Files:** ${uniqueFiles.length} file(s)\n\n`;
             uniqueFiles.forEach(file => {
-                body += `- \`${file}\`\n`;
+                const fileFindings = findings.filter(f => f.file === file);
+                let fileLine = `- \`${file}\``;
+                const lineNumbers = [];
+                fileFindings.forEach(f => {
+                    if (f.startLine !== undefined) {
+                        let lineNum = `${f.startLine}`;
+                        if (f.endLine !== undefined && f.endLine !== f.startLine) {
+                            lineNum += `-${f.endLine}`;
+                        }
+                        lineNumbers.push(lineNum);
+                    }
+                });
+                if (lineNumbers.length > 0) {
+                    fileLine += ` (Lines ${lineNumbers.join(', ')})`;
+                }
+                body += `${fileLine}\n`;
             });
             body += `\n`;
         }
@@ -100838,8 +100882,7 @@ function generateIssueBody(findings, debug) {
         if (finding.id && finding.id !== finding.avdid) {
             body += `**ID:** \`${finding.id}\`\n\n`;
         }
-        // 7. Severity (in bold)
-        body += `**Severity:** **${finding.severity}**\n\n`;
+        // Severity already shown at top in colored box, so skip here
         // 8. Description
         if (finding.description && finding.description.trim()) {
             body += `### Description\n\n${finding.description.trim()}\n\n`;
@@ -100898,8 +100941,10 @@ function getCodeSnippetsFromFiles(findings, debug) {
                 // The file path might be relative to the workspace root
                 let filePath = file;
                 if (!path.isAbsolute(filePath)) {
-                    // Try common locations
+                    // Try common locations - check GITHUB_WORKSPACE first
+                    const workspace = process.env.GITHUB_WORKSPACE || process.cwd();
                     const possiblePaths = [
+                        path.join(workspace, filePath),
                         filePath,
                         path.join(process.cwd(), filePath),
                         path.join(process.cwd(), '..', filePath)
@@ -100909,62 +100954,61 @@ function getCodeSnippetsFromFiles(findings, debug) {
                         if (fs.existsSync(possiblePath)) {
                             filePath = possiblePath;
                             found = true;
+                            if (debug === "true") {
+                                core.info(`Found file at: ${filePath}`);
+                            }
                             break;
                         }
                     }
                     if (!found) {
                         if (debug === "true") {
-                            core.warning(`File not found: ${file}, trying paths: ${possiblePaths.join(', ')}`);
+                            core.warning(`File not found: ${file}, tried paths: ${possiblePaths.join(', ')}`);
                         }
-                        // Fall back to code lines from JSON if file not found
-                        const firstFinding = fileFindings[0];
-                        if (firstFinding.codeLines && firstFinding.codeLines.length > 0) {
-                            snippets.push(generateCodeSnippetFromJson(firstFinding, file));
-                        }
+                        // Don't fall back to JSON - just skip if file not found
                         continue;
                     }
                 }
                 const fileContent = fs.readFileSync(filePath, 'utf8');
                 const lines = fileContent.split('\n');
+                if (debug === "true") {
+                    core.info(`Reading file ${filePath}, total lines: ${lines.length}`);
+                }
                 // Determine the file extension for syntax highlighting
                 const fileExt = file.split('.').pop() || '';
                 const language = getLanguageFromExtension(fileExt);
-                // Get all unique line ranges for this file
+                // Get all unique line ranges for this file (from JSON, not from code lines)
                 const lineRanges = [];
                 for (const f of fileFindings) {
                     if (f.startLine !== undefined) {
                         const start = f.startLine;
                         const end = f.endLine !== undefined ? f.endLine : f.startLine;
-                        lineRanges.push({ start, end });
+                        lineRanges.push({ start, end, finding: f });
                     }
                 }
-                // Sort and merge overlapping ranges
+                if (lineRanges.length === 0) {
+                    if (debug === "true") {
+                        core.warning(`No line numbers found for file ${file}`);
+                    }
+                    continue;
+                }
+                // Sort by start line
                 lineRanges.sort((a, b) => a.start - b.start);
-                const mergedRanges = [];
+                // Generate code snippet for each range (don't merge - show each separately)
                 for (const range of lineRanges) {
-                    if (mergedRanges.length === 0) {
-                        mergedRanges.push(range);
-                    }
-                    else {
-                        const last = mergedRanges[mergedRanges.length - 1];
-                        if (range.start <= last.end + 10) { // Merge if within 10 lines (accounting for context)
-                            last.end = Math.max(last.end, range.end);
-                        }
-                        else {
-                            mergedRanges.push(range);
-                        }
-                    }
-                }
-                // Generate code snippet for each range
-                for (const range of mergedRanges) {
                     const startLine = Math.max(1, range.start - 5); // 5 lines before
                     const endLine = Math.min(lines.length, range.end + 5); // 5 lines after
-                    let snippet = `**File:** \`${file}\`\n\n`;
+                    if (debug === "true") {
+                        core.info(`Generating snippet for ${file}: lines ${startLine}-${endLine} (finding at ${range.start}-${range.end})`);
+                    }
+                    let snippet = `**File:** \`${file}\` (Lines ${range.start}`;
+                    if (range.end !== range.start) {
+                        snippet += `-${range.end}`;
+                    }
+                    snippet += `)\n\n`;
                     snippet += `\`\`\`${language}\n`;
                     for (let i = startLine - 1; i < endLine; i++) {
                         const lineNum = i + 1;
                         const line = lines[i] || '';
-                        const isHighlighted = lineNum >= range.start && lineNum <= range.end;
                         // Add line number and content
                         snippet += `${lineNum.toString().padStart(4, ' ')} | ${line}\n`;
                     }
@@ -100975,12 +101019,10 @@ function getCodeSnippetsFromFiles(findings, debug) {
             catch (error) {
                 if (debug === "true") {
                     core.warning(`Error reading file ${file}: ${error.message}`);
+                    core.warning(`Stack: ${error.stack}`);
                 }
-                // Fall back to code lines from JSON if file read fails
-                const firstFinding = fileFindings[0];
-                if (firstFinding.codeLines && firstFinding.codeLines.length > 0) {
-                    snippets.push(generateCodeSnippetFromJson(firstFinding, file));
-                }
+                // Don't fall back to JSON - just skip if file read fails
+                continue;
             }
         }
         return snippets;
