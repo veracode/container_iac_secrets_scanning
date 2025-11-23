@@ -102382,6 +102382,21 @@ function getSeverityColor(severity) {
             return '8dbd3e'; // Informational - green
     }
 }
+function getSeverityEmoji(severity) {
+    // Map severity to emoji for visual indicator (fallback when colors are stripped)
+    switch (severity.toUpperCase()) {
+        case 'CRITICAL':
+            return '🔴'; // Red circle
+        case 'HIGH':
+            return '🟠'; // Orange circle
+        case 'MEDIUM':
+            return '🟡'; // Yellow circle
+        case 'LOW':
+            return '🟢'; // Green circle
+        default:
+            return '⚪'; // White circle
+    }
+}
 function getExistingIssues(octokit, owner, repo, debug) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -102610,9 +102625,15 @@ function generateIssueBody(findings, debug) {
         }
         let body = `## Infrastructure as Code Misconfiguration\n\n`;
         // Severity box at the top (colored, text always black)
-        // Using HTML span with inline styles - GitHub markdown supports this
+        // Note: GitHub markdown sanitizes inline styles in issue bodies, so background colors
+        // are often stripped. We'll try HTML but GitHub may not render the color.
         const severityColor = getSeverityColor(finding.severity);
-        body += `<span style="background-color: #${severityColor}; color: #000000; padding: 6px 12px; border-radius: 3px; font-weight: bold; display: inline-block;">Severity: ${finding.severity}</span>\n\n`;
+        const severityEmoji = getSeverityEmoji(finding.severity);
+        // Try HTML first (may be stripped by GitHub)
+        body += `<div style="background-color: #${severityColor}; color: #000000; padding: 8px 12px; border-radius: 4px; font-weight: bold; display: inline-block; margin-bottom: 16px;">Severity: ${finding.severity}</div>\n\n`;
+        // Fallback: Also add a text-based indicator that will always show
+        // This ensures visibility even if GitHub strips the HTML styles
+        body += `**Severity:** ${severityEmoji} **${finding.severity}**\n\n`;
         // File Information - Always show with line numbers from JSON
         const uniqueFiles = [...new Set(findings.map(f => f.file))];
         if (uniqueFiles.length === 1) {
