@@ -1,3 +1,6 @@
 .DS_Store
-node_modules
+node_modules/*
 example/
+delete_issues.js
+node_modules/.package-lock.json
+node_modules/node-fetch/browser.js

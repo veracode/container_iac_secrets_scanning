@@ -600,10 +600,9 @@ async function generateIssueBody(findings: PolicyRelevantFinding[], debug?: stri
   let body = `## Infrastructure as Code Misconfiguration\n\n`
   
   // Severity box at the top (colored, text always black)
+  // Using HTML span with inline styles - GitHub markdown supports this
   const severityColor = getSeverityColor(finding.severity)
-  body += `<div style="background-color: #${severityColor}; padding: 8px 12px; border-radius: 4px; display: inline-block; margin-bottom: 16px;">`
-  body += `<strong style="color: #000000;">Severity: ${finding.severity}</strong>`
-  body += `</div>\n\n`
+  body += `<span style="background-color: #${severityColor}; color: #000000; padding: 6px 12px; border-radius: 3px; font-weight: bold; display: inline-block;">Severity: ${finding.severity}</span>\n\n`
   
   // File Information - Always show with line numbers from JSON
   const uniqueFiles = [...new Set(findings.map(f => f.file))]
@@ -825,8 +824,8 @@ async function getCodeSnippetsFromFiles(findings: PolicyRelevantFinding[], debug
           const lineNum = i + 1
           const line = lines[i] || ''
           
-          // Add line number and content
-          snippet += `${lineNum.toString().padStart(4, ' ')} | ${line}\n`
+          // Add line number and content (without pipe separator to avoid GitHub's diff highlighting)
+          snippet += `${line}\n`
         }
         
         snippet += `\`\`\`\n`
