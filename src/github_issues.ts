@@ -24,6 +24,9 @@ interface Misconfiguration {
         Content: string
         Annotation?: string
         Highlighted?: string
+        IsCause?: boolean
+        FirstCause?: boolean
+        LastCause?: boolean
       }>
     }
     StartLine?: number
@@ -80,8 +83,8 @@ export async function generateGitHubIssues(
 
     core.info(`Found ${policyRelevantFindings.length} policy-relevant misconfigurations`)
 
-    // Group findings by file and title to avoid duplicate issues
-    const groupedFindings = groupFindingsByFileAndTitle(policyRelevantFindings)
+    // Group findings - first by AVDID if available, then by file and title
+    const groupedFindings = groupFindingsByAVDIDAndFile(policyRelevantFindings)
 
     const octokit = github.getOctokit(token)
 
@@ -100,10 +103,19 @@ export async function generateGitHubIssues(
     // Create issues for each unique finding
     for (const [key, findings] of Object.entries(groupedFindings)) {
       const finding = findings[0] // Use first finding as representative
-      const issueTitle = `[IaC] ${finding.title} - ${finding.file}`
+      
+      // Determine issue title - if same AVDID in multiple files, consolidate
+      const uniqueFiles = [...new Set(findings.map(f => f.file))]
+      let issueTitle: string
+      if (finding.avdid && uniqueFiles.length > 1) {
+        // Consolidate by AVDID when same issue appears in multiple files
+        issueTitle = `[IaC] ${finding.title} (${uniqueFiles.length} files)`
+      } else {
+        issueTitle = `[IaC] ${finding.title} - ${finding.file}`
+      }
       
       // Check for duplicate issues
-      if (isDuplicateIssue(existingIssues, finding.file, finding.title)) {
+      if (isDuplicateIssue(existingIssues, finding.file, finding.title, finding.avdid)) {
         if (debug === "true") {
           core.info(`Skipping duplicate issue: ${issueTitle}`)
         }
@@ -299,28 +311,39 @@ async function getExistingIssues(
   }
 }
 
-function isDuplicateIssue(existingIssues: any[], file: string, title: string): boolean {
+function isDuplicateIssue(existingIssues: any[], file: string, title: string, avdid?: string): boolean {
   const normalizedTitle = `[IaC] ${title} - ${file}`
+  const normalizedTitleLower = normalizedTitle.toLowerCase()
+  const titleLower = title.toLowerCase()
+  const fileLower = file.toLowerCase()
   
   return existingIssues.some(issue => {
+    const issueTitle = issue.title || ''
+    const issueTitleLower = issueTitle.toLowerCase()
+    
     // Check if title matches exactly
-    if (issue.title === normalizedTitle) {
+    if (issueTitle === normalizedTitle) {
       return true
     }
     
-    // Also check if it's the same file and title (case-insensitive)
-    const issueTitleLower = issue.title.toLowerCase()
-    const normalizedTitleLower = normalizedTitle.toLowerCase()
-    
+    // Check case-insensitive match
     if (issueTitleLower === normalizedTitleLower) {
       return true
     }
     
     // Check if the issue title contains the same file and title pattern
     if (issueTitleLower.includes(`[iac]`) && 
-        issueTitleLower.includes(title.toLowerCase()) && 
-        issueTitleLower.includes(file.toLowerCase())) {
+        issueTitleLower.includes(titleLower) && 
+        issueTitleLower.includes(fileLower)) {
       return true
+    }
+    
+    // If AVDID is available, also check by AVDID in issue body
+    if (avdid && issue.body) {
+      const avdidPattern = new RegExp(`AVD ID.*${avdid.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'i')
+      if (avdidPattern.test(issue.body) && issueTitleLower.includes(titleLower)) {
+        return true
+      }
     }
     
     return false
@@ -360,11 +383,15 @@ function extractPolicyRelevantFindings(results: ResultsJson): PolicyRelevantFind
   // Get all misconfigurations
   const allMisconfigurations = results.misconfigurations || []
 
-  // Create a map of file -> title -> misconfiguration for quick lookup
+  // Create a comprehensive map: file -> title -> misconfigurations
+  // Also create AVDID -> misconfigurations map for consolidation
   const misconfigMap = new Map<string, Map<string, Misconfiguration[]>>()
+  const avdidMap = new Map<string, Misconfiguration[]>()
 
   for (const misconfigResult of allMisconfigurations) {
-    const file = misconfigResult.Target
+    const file = misconfigResult.Target || ''
+    
+    // Build file -> title map
     if (!misconfigMap.has(file)) {
       misconfigMap.set(file, new Map())
     }
@@ -372,10 +399,20 @@ function extractPolicyRelevantFindings(results: ResultsJson): PolicyRelevantFind
 
     for (const misconfig of misconfigResult.Misconfigurations || []) {
       const title = misconfig.Title || misconfig.ID || 'Unknown'
+      
+      // Add to file -> title map
       if (!fileMap.has(title)) {
         fileMap.set(title, [])
       }
       fileMap.get(title)!.push(misconfig)
+      
+      // Also add to AVDID map for consolidation
+      if (misconfig.AVDID) {
+        if (!avdidMap.has(misconfig.AVDID)) {
+          avdidMap.set(misconfig.AVDID, [])
+        }
+        avdidMap.get(misconfig.AVDID)!.push(misconfig)
+      }
     }
   }
 
@@ -388,45 +425,83 @@ function extractPolicyRelevantFindings(results: ResultsJson): PolicyRelevantFind
       const file = match[2].trim()
       const title = match[3].trim()
 
-      // Find matching misconfiguration
+      // Find matching misconfiguration - try exact match first
+      let matchedMisconfig: Misconfiguration | null = null
       const fileMap = misconfigMap.get(file)
+      
       if (fileMap) {
         const misconfigs = fileMap.get(title) || []
         if (misconfigs.length > 0) {
-          const misconfig = misconfigs[0] // Use first match
-          findings.push({
-            file,
-            title,
-            severity,
-            description: misconfig.Description,
-            message: misconfig.Message,
-            resolution: misconfig.Resolution,
-            startLine: misconfig.CauseMetadata?.StartLine,
-            endLine: misconfig.CauseMetadata?.EndLine,
-            id: misconfig.ID,
-            avdid: misconfig.AVDID,
-            primaryURL: misconfig.PrimaryURL,
-            provider: misconfig.CauseMetadata?.Provider,
-            service: misconfig.CauseMetadata?.Service,
-            namespace: misconfig.Namespace,
-            query: misconfig.Query,
-            references: misconfig.References,
-            type: misconfig.Type,
-            codeLines: misconfig.CauseMetadata?.Code?.Lines?.map(line => ({
-              number: line.Number,
-              content: line.Content
-            }))
-          })
-        } else {
-          // If no exact match, create finding from policy failure
-          findings.push({
-            file,
-            title,
-            severity
-          })
+          matchedMisconfig = misconfigs[0] // Use first match
         }
+      }
+      
+      // If no exact match found, try case-insensitive match
+      if (!matchedMisconfig && fileMap) {
+        const titleLower = title.toLowerCase()
+        for (const [mapTitle, misconfigs] of fileMap.entries()) {
+          if (mapTitle.toLowerCase() === titleLower && misconfigs.length > 0) {
+            matchedMisconfig = misconfigs[0]
+            break
+          }
+        }
+      }
+      
+      // If still no match, search all misconfigurations for matching title (case-insensitive)
+      if (!matchedMisconfig) {
+        const titleLower = title.toLowerCase()
+        for (const misconfigResult of allMisconfigurations) {
+          // Only check misconfigurations from the same file
+          if (misconfigResult.Target === file) {
+            for (const misconfig of misconfigResult.Misconfigurations || []) {
+              const misconfigTitle = (misconfig.Title || misconfig.ID || '').toLowerCase()
+              if (misconfigTitle === titleLower) {
+                matchedMisconfig = misconfig
+                break
+              }
+            }
+            if (matchedMisconfig) break
+          }
+        }
+      }
+
+      if (matchedMisconfig) {
+        // Extract all available information - ensure we get everything
+        const codeLines = matchedMisconfig.CauseMetadata?.Code?.Lines
+          ?.filter(line => line.IsCause !== false && line.Content && line.Content.trim())
+          .map(line => ({
+            number: line.Number,
+            content: line.Content.trim()
+          })) || undefined
+
+        const finding: PolicyRelevantFinding = {
+          file,
+          title,
+          severity,
+          description: matchedMisconfig.Description?.trim() || undefined,
+          message: matchedMisconfig.Message?.trim() || undefined,
+          resolution: matchedMisconfig.Resolution?.trim() || undefined,
+          startLine: matchedMisconfig.CauseMetadata?.StartLine,
+          endLine: matchedMisconfig.CauseMetadata?.EndLine,
+          id: matchedMisconfig.ID || undefined,
+          avdid: matchedMisconfig.AVDID || undefined,
+          primaryURL: matchedMisconfig.PrimaryURL || undefined,
+          provider: matchedMisconfig.CauseMetadata?.Provider || undefined,
+          service: matchedMisconfig.CauseMetadata?.Service || undefined,
+          namespace: matchedMisconfig.Namespace || undefined,
+          query: matchedMisconfig.Query || undefined,
+          references: matchedMisconfig.References && matchedMisconfig.References.length > 0 
+            ? matchedMisconfig.References 
+            : undefined,
+          type: matchedMisconfig.Type || undefined,
+          codeLines: codeLines && codeLines.length > 0 ? codeLines : undefined
+        }
+        
+        findings.push(finding)
       } else {
-        // If file not found in misconfigurations, create finding from policy failure
+        // If no match found, create minimal finding from policy failure
+        // This should rarely happen if the JSON structure is correct
+        core.warning(`Could not find matching misconfiguration for: ${file} - ${title}`)
         findings.push({
           file,
           title,
@@ -439,12 +514,62 @@ function extractPolicyRelevantFindings(results: ResultsJson): PolicyRelevantFind
   return findings
 }
 
-function groupFindingsByFileAndTitle(
+function groupFindingsByAVDIDAndFile(
   findings: PolicyRelevantFinding[]
 ): Record<string, PolicyRelevantFinding[]> {
   const grouped: Record<string, PolicyRelevantFinding[]> = {}
+  
+  // First, group by AVDID if available (for consolidation)
+  const avdidGroups = new Map<string, PolicyRelevantFinding[]>()
+  const noAVDIDFindings: PolicyRelevantFinding[] = []
 
   for (const finding of findings) {
+    if (finding.avdid) {
+      if (!avdidGroups.has(finding.avdid)) {
+        avdidGroups.set(finding.avdid, [])
+      }
+      avdidGroups.get(finding.avdid)!.push(finding)
+    } else {
+      noAVDIDFindings.push(finding)
+    }
+  }
+
+  // For findings with AVDID, group by AVDID + title (allows same AVDID with different titles)
+  for (const [avdid, avdidFindings] of avdidGroups.entries()) {
+    const titleGroups = new Map<string, PolicyRelevantFinding[]>()
+    
+    for (const finding of avdidFindings) {
+      const titleKey = finding.title
+      if (!titleGroups.has(titleKey)) {
+        titleGroups.set(titleKey, [])
+      }
+      titleGroups.get(titleKey)!.push(finding)
+    }
+    
+    // Create groups: if same AVDID+title appears in multiple files, consolidate
+    // Otherwise, keep separate by file
+    for (const [title, titleFindings] of titleGroups.entries()) {
+      const uniqueFiles = [...new Set(titleFindings.map(f => f.file))]
+      
+      if (uniqueFiles.length > 1) {
+        // Same AVDID+title in multiple files - consolidate into one issue
+        const key = `AVDID:${avdid}::TITLE:${title}`
+        grouped[key] = titleFindings
+      } else {
+        // Same AVDID+title in one file - group by file
+        for (const finding of titleFindings) {
+          const key = `${finding.file}::${finding.title}::${avdid}`
+          if (!grouped[key]) {
+            grouped[key] = []
+          }
+          grouped[key].push(finding)
+        }
+      }
+    }
+  }
+
+  // For findings without AVDID, group by file and title
+  for (const finding of noAVDIDFindings) {
     const key = `${finding.file}::${finding.title}`
     if (!grouped[key]) {
       grouped[key] = []
@@ -459,17 +584,30 @@ function generateIssueBody(findings: PolicyRelevantFinding[]): string {
   const finding = findings[0]
   let body = `## Infrastructure as Code Misconfiguration\n\n`
   
-  body += `**File:** \`${finding.file}\`\n\n`
+  // Basic Information - Always show
+  const uniqueFiles = [...new Set(findings.map(f => f.file))]
+  if (uniqueFiles.length === 1) {
+    body += `**File:** \`${finding.file}\`\n\n`
+  } else {
+    body += `**Affected Files:** ${uniqueFiles.length} file(s)\n\n`
+    uniqueFiles.forEach(file => {
+      body += `- \`${file}\`\n`
+    })
+    body += `\n`
+  }
+  
   body += `**Severity:** ${finding.severity}\n\n`
   
-  if (finding.id) {
-    body += `**ID:** ${finding.id}\n\n`
-  }
-
+  // Identification - Always show if available
   if (finding.avdid) {
-    body += `**AVD ID:** ${finding.avdid}\n\n`
+    body += `**AVD ID:** \`${finding.avdid}\`\n\n`
+  }
+  
+  if (finding.id) {
+    body += `**ID:** \`${finding.id}\`\n\n`
   }
 
+  // Context Information
   if (finding.provider) {
     body += `**Provider:** ${finding.provider}\n\n`
   }
@@ -482,35 +620,6 @@ function generateIssueBody(findings: PolicyRelevantFinding[]): string {
     body += `**Type:** ${finding.type}\n\n`
   }
 
-  if (finding.description) {
-    body += `### Description\n\n${finding.description}\n\n`
-  }
-
-  if (finding.message) {
-    body += `### Message\n\n${finding.message}\n\n`
-  }
-
-  if (finding.startLine !== undefined) {
-    body += `**Location:** Lines ${finding.startLine}`
-    if (finding.endLine !== undefined && finding.endLine !== finding.startLine) {
-      body += `-${finding.endLine}`
-    }
-    body += `\n\n`
-  }
-
-  // Add code snippet if available
-  if (finding.codeLines && finding.codeLines.length > 0) {
-    body += `### Code Location\n\n\`\`\`\n`
-    finding.codeLines.forEach(line => {
-      body += `${line.number}: ${line.content}\n`
-    })
-    body += `\`\`\`\n\n`
-  }
-
-  if (finding.resolution) {
-    body += `### Resolution\n\n${finding.resolution}\n\n`
-  }
-
   if (finding.namespace) {
     body += `**Namespace:** \`${finding.namespace}\`\n\n`
   }
@@ -519,8 +628,63 @@ function generateIssueBody(findings: PolicyRelevantFinding[]): string {
     body += `**Query:** \`${finding.query}\`\n\n`
   }
 
+  // Location Information - Show for each file if multiple
+  if (uniqueFiles.length === 1 && finding.startLine !== undefined) {
+    body += `**Location:** Lines ${finding.startLine}`
+    if (finding.endLine !== undefined && finding.endLine !== finding.startLine) {
+      body += `-${finding.endLine}`
+    }
+    body += `\n\n`
+  } else if (uniqueFiles.length > 1) {
+    // Show location for each finding
+    body += `**Locations:**\n\n`
+    findings.forEach(f => {
+      if (f.startLine !== undefined) {
+        body += `- \`${f.file}\`: Lines ${f.startLine}`
+        if (f.endLine !== undefined && f.endLine !== f.startLine) {
+          body += `-${f.endLine}`
+        }
+        body += `\n`
+      }
+    })
+    body += `\n`
+  }
+
+  // Description Section - Always show if available
+  if (finding.description && finding.description.trim()) {
+    body += `### Description\n\n${finding.description.trim()}\n\n`
+  }
+
+  // Message Section - Always show if available
+  if (finding.message && finding.message.trim()) {
+    body += `### Message\n\n${finding.message.trim()}\n\n`
+  }
+
+  // Code Location Section - Show the actual code
+  // If multiple files, show code for the first file (or all if they're different)
+  if (finding.codeLines && finding.codeLines.length > 0) {
+    body += `### Code Location\n\n`
+    
+    // Determine the file extension for syntax highlighting
+    const fileExt = finding.file.split('.').pop() || ''
+    const language = getLanguageFromExtension(fileExt)
+    
+    body += `\`\`\`${language}\n`
+    finding.codeLines.forEach(line => {
+      // Show line number and content
+      body += `${line.number.toString().padStart(4, ' ')} | ${line.content}\n`
+    })
+    body += `\`\`\`\n\n`
+  }
+
+  // Resolution Section - Always show if available
+  if (finding.resolution && finding.resolution.trim()) {
+    body += `### Resolution\n\n${finding.resolution.trim()}\n\n`
+  }
+
+  // References Section
   if (finding.primaryURL) {
-    body += `**Primary Reference:** ${finding.primaryURL}\n\n`
+    body += `### Primary Reference\n\n${finding.primaryURL}\n\n`
   }
 
   if (finding.references && finding.references.length > 0) {
@@ -531,12 +695,35 @@ function generateIssueBody(findings: PolicyRelevantFinding[]): string {
     body += `\n`
   }
 
-  if (findings.length > 1) {
-    body += `\n---\n\n*This issue represents ${findings.length} similar findings.*\n`
+  // Multiple Findings Note
+  if (findings.length > 1 || uniqueFiles.length > 1) {
+    body += `\n---\n\n**Note:** This issue represents ${findings.length} finding(s) across ${uniqueFiles.length} file(s).\n\n`
   }
 
   body += `\n---\n*Generated by Veracode Container/IaC/Secrets Scanning GitHub Action*`
 
   return body
+}
+
+function getLanguageFromExtension(ext: string): string {
+  const languageMap: Record<string, string> = {
+    'tf': 'hcl',
+    'tfvars': 'hcl',
+    'yaml': 'yaml',
+    'yml': 'yaml',
+    'json': 'json',
+    'xml': 'xml',
+    'dockerfile': 'dockerfile',
+    'sh': 'bash',
+    'py': 'python',
+    'js': 'javascript',
+    'ts': 'typescript',
+    'go': 'go',
+    'java': 'java',
+    'rb': 'ruby',
+    'php': 'php'
+  }
+  
+  return languageMap[ext.toLowerCase()] || ''
 }
 
