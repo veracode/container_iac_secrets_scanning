@@ -1,6 +1,16 @@
 import * as core from "@actions/core"
 const { DefaultArtifactClient } = require('@actions/artifact');
-const artifactV1 = require('@actions/artifact-v1');
+
+// For GitHub Enterprise Server, we need to use v1 of the artifact client
+// The npm alias @actions/artifact-v1 points to @actions/artifact@^1.1.1
+let artifactV1: any = null;
+try {
+  // Try to require the v1 artifact client
+  // Note: This uses an npm alias which should be resolved at install time
+  artifactV1 = require('@actions/artifact-v1');
+} catch (error: any) {
+  core.warning(`Could not load artifact v1 client: ${error.message}. Enterprise Server support may be limited.`);
+}
 
 export async function store_artifacts(resultfiles:any, debug:any, platformType: string) {
 
@@ -23,8 +33,14 @@ export async function store_artifacts(resultfiles:any, debug:any, platformType: 
     let artifactClient;
 
     if (platformType === 'ENTERPRISE') {
-        artifactClient = artifactV1.create();
-        core.info(`Initialized the artifact object using version V1.`);
+        if (artifactV1) {
+            artifactClient = artifactV1.create();
+            core.info(`Initialized the artifact object using version V1.`);
+        } else {
+            core.warning('Artifact v1 client not available. Falling back to v2 client for Enterprise Server.');
+            artifactClient = new DefaultArtifactClient();
+            core.info(`Initialized the artifact object using version V2 (fallback).`);
+        }
     } else {
         artifactClient = new DefaultArtifactClient();
         core.info(`Initialized the artifact object using version V2.`);
