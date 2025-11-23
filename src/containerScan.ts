@@ -244,13 +244,14 @@ export async function ContainerScan(parameters:any) {
             repo = repoParts[1]
           }
 
-          // Read SARIF file
-          const sarifContent = fs.readFileSync(sarifPath, 'utf8')
-          const sarifBase64 = Buffer.from(sarifContent).toString('base64')
-
-          // Upload SARIF using Code Scanning API
-          // Note: The API requires the sarif to be base64 encoded
+          // Upload SARIF using GitHub Code Scanning API
+          // Set output for the SARIF file path regardless of upload success
+          core.setOutput('sarif_file', sarifPath)
+          
           try {
+            const sarifContent = fs.readFileSync(sarifPath, 'utf8')
+            const sarifBase64 = Buffer.from(sarifContent).toString('base64')
+            
             const response = await octokit.request('POST /repos/{owner}/{repo}/code-scanning/sarifs', {
               owner,
               repo,
@@ -261,10 +262,28 @@ export async function ContainerScan(parameters:any) {
             })
             core.info(`Code scanning alerts uploaded successfully. ID: ${response.data.id}`)
           } catch (error: any) {
-            // If API upload fails, log the error but don't fail the action
-            core.warning(`Failed to upload SARIF via API: ${error.message}`)
-            core.info(`SARIF file generated at: ${sarifPath}`)
-            core.info(`You can manually upload it using: github/codeql-action/upload-sarif@v3`)
+            const errorMsg = error.message || 'Unknown error'
+            core.warning(`Failed to upload SARIF via API: ${errorMsg}`)
+            
+            // Provide specific guidance for common errors
+            if (errorMsg.includes('Resource not accessible by integration')) {
+              core.warning(`This usually means the GitHub token lacks 'security-events: write' permission.`)
+              core.warning(`Ensure your workflow has the following permissions:`)
+              core.warning(`permissions:`)
+              core.warning(`  security-events: write`)
+              core.warning(`  contents: read`)
+            } else if (errorMsg.includes('Not Found')) {
+              core.warning(`Repository not found or access denied.`)
+            }
+            
+            core.info(`\nSARIF file generated at: ${sarifPath}`)
+            core.info(`The SARIF file path is available via the 'sarif_file' output.`)
+            core.info(`To upload the SARIF file manually, add this step to your workflow after the scan:`)
+            core.info(`  - name: Upload SARIF`)
+            core.info(`    uses: github/codeql-action/upload-sarif@v3`)
+            core.info(`    with:`)
+            core.info(`      sarif_file: \${{ steps.<step-id>.outputs.sarif_file }}`)
+            core.info(`    continue-on-error: true`)
           }
         } else {
           core.warning('results.json not found, skipping code scanning alerts generation')

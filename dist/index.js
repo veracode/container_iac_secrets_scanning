@@ -99960,12 +99960,12 @@ function ContainerScan(parameters) {
                             owner = repoParts[0];
                             repo = repoParts[1];
                         }
-                        // Read SARIF file
-                        const sarifContent = fs.readFileSync(sarifPath, 'utf8');
-                        const sarifBase64 = Buffer.from(sarifContent).toString('base64');
-                        // Upload SARIF using Code Scanning API
-                        // Note: The API requires the sarif to be base64 encoded
+                        // Upload SARIF using GitHub Code Scanning API
+                        // Set output for the SARIF file path regardless of upload success
+                        core.setOutput('sarif_file', sarifPath);
                         try {
+                            const sarifContent = fs.readFileSync(sarifPath, 'utf8');
+                            const sarifBase64 = Buffer.from(sarifContent).toString('base64');
                             const response = yield octokit.request('POST /repos/{owner}/{repo}/code-scanning/sarifs', {
                                 owner,
                                 repo,
@@ -99977,10 +99977,27 @@ function ContainerScan(parameters) {
                             core.info(`Code scanning alerts uploaded successfully. ID: ${response.data.id}`);
                         }
                         catch (error) {
-                            // If API upload fails, log the error but don't fail the action
-                            core.warning(`Failed to upload SARIF via API: ${error.message}`);
-                            core.info(`SARIF file generated at: ${sarifPath}`);
-                            core.info(`You can manually upload it using: github/codeql-action/upload-sarif@v3`);
+                            const errorMsg = error.message || 'Unknown error';
+                            core.warning(`Failed to upload SARIF via API: ${errorMsg}`);
+                            // Provide specific guidance for common errors
+                            if (errorMsg.includes('Resource not accessible by integration')) {
+                                core.warning(`This usually means the GitHub token lacks 'security-events: write' permission.`);
+                                core.warning(`Ensure your workflow has the following permissions:`);
+                                core.warning(`permissions:`);
+                                core.warning(`  security-events: write`);
+                                core.warning(`  contents: read`);
+                            }
+                            else if (errorMsg.includes('Not Found')) {
+                                core.warning(`Repository not found or access denied.`);
+                            }
+                            core.info(`\nSARIF file generated at: ${sarifPath}`);
+                            core.info(`The SARIF file path is available via the 'sarif_file' output.`);
+                            core.info(`To upload the SARIF file manually, add this step to your workflow after the scan:`);
+                            core.info(`  - name: Upload SARIF`);
+                            core.info(`    uses: github/codeql-action/upload-sarif@v3`);
+                            core.info(`    with:`);
+                            core.info(`      sarif_file: \${{ steps.<step-id>.outputs.sarif_file }}`);
+                            core.info(`    continue-on-error: true`);
                         }
                     }
                     else {
@@ -100367,6 +100384,10 @@ function generateGitHubIssues(resultsJsonPath, token, owner, repo, debug) {
             // Group findings by file and title to avoid duplicate issues
             const groupedFindings = groupFindingsByFileAndTitle(policyRelevantFindings);
             const octokit = github.getOctokit(token);
+            // Track success and failures
+            let successCount = 0;
+            let failureCount = 0;
+            const failures = [];
             // Create issues for each unique finding
             for (const [key, findings] of Object.entries(groupedFindings)) {
                 const finding = findings[0]; // Use first finding as representative
@@ -100384,10 +100405,40 @@ function generateGitHubIssues(resultsJsonPath, token, owner, repo, debug) {
                         labels: ['iac', 'security', finding.severity.toLowerCase()]
                     });
                     core.info(`Created issue: ${issueTitle}`);
+                    successCount++;
                 }
                 catch (error) {
-                    core.warning(`Failed to create issue for ${key}: ${error.message}`);
+                    failureCount++;
+                    const errorMsg = error.message || 'Unknown error';
+                    failures.push(`${key}: ${errorMsg}`);
+                    // Provide specific guidance for common errors
+                    if (errorMsg.includes('Resource not accessible by integration')) {
+                        core.warning(`Failed to create issue for ${key}: ${errorMsg}`);
+                        core.warning(`This usually means the GitHub token lacks 'issues: write' permission or issues are disabled in the repository.`);
+                    }
+                    else if (errorMsg.includes('Not Found')) {
+                        core.warning(`Failed to create issue for ${key}: Repository not found or access denied`);
+                    }
+                    else {
+                        core.warning(`Failed to create issue for ${key}: ${errorMsg}`);
+                    }
                 }
+            }
+            // Summary
+            core.info(`\n=== GitHub Issues Summary ===`);
+            core.info(`Total findings: ${policyRelevantFindings.length}`);
+            core.info(`Unique issues attempted: ${Object.keys(groupedFindings).length}`);
+            core.info(`Successfully created: ${successCount}`);
+            core.info(`Failed: ${failureCount}`);
+            if (failureCount > 0) {
+                core.warning(`\nSome issues failed to create. Common causes:`);
+                core.warning(`1. GitHub token missing 'issues: write' permission`);
+                core.warning(`2. Issues disabled in repository settings`);
+                core.warning(`3. Repository access restrictions`);
+                core.warning(`\nEnsure your workflow has the following permissions:`);
+                core.warning(`permissions:`);
+                core.warning(`  issues: write`);
+                core.warning(`  contents: read`);
             }
         }
         catch (error) {

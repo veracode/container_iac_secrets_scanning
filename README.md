@@ -32,6 +32,19 @@ The full output of the action can still be reviewed on the action run overview a
 
 The action can automatically generate GitHub issues and code scanning alerts for Infrastructure as Code (IaC) misconfigurations. These features only process **policy-relevant findings** - misconfigurations that failed policy checks.
 
+### Required Permissions
+
+To use these features, your workflow must have the appropriate permissions:
+
+```yml
+permissions:
+  issues: write          # Required for GitHub Issues
+  security-events: write # Required for Code Scanning Alerts
+  contents: read         # Required to read repository files
+```
+
+**Note:** If you're using `github-token` from `${{ secrets.GITHUB_TOKEN }}`, make sure your workflow explicitly sets these permissions. The default token has limited permissions.
+
 ### GitHub Issues
 
 When `issues: true` is set, the action will:
@@ -39,14 +52,37 @@ When `issues: true` is set, the action will:
 - Create GitHub issues for each unique finding (grouped by file and title to avoid duplicates)
 - Include detailed information such as severity, description, resolution steps, and file locations
 - Automatically label issues with `iac`, `security`, and the severity level
+- Provide a summary of created vs failed issues
+
+**Common Issues:**
+- "Resource not accessible by integration" - The token lacks `issues: write` permission or issues are disabled in repository settings
+- "Not Found" - Repository not found or access denied
 
 ### Code Scanning Alerts
 
 When `codeScanningAlerts: true` is set, the action will:
 - Generate a SARIF (Static Analysis Results Interchange Format) file
-- Upload it to GitHub Code Scanning to create alerts in the Security tab
+- Automatically upload it to GitHub Code Scanning to create alerts in the Security tab
 - Map severity levels appropriately (CRITICAL/HIGH → error, MEDIUM → warning, LOW → note)
 - Include file locations and line numbers for each finding
+- Set an output variable `sarif_file` with the path to the generated SARIF file
+
+**Upload Process:**
+1. The action first attempts to upload via the GitHub Code Scanning API
+2. If that fails due to permissions, it tries using GitHub CLI (if available)
+3. If both fail, the SARIF file is still generated and the path is available via the `sarif_file` output
+
+**Common Issues:**
+- "Resource not accessible by integration" - The token lacks `security-events: write` permission
+- If automatic upload fails, you can manually upload using the `sarif_file` output:
+
+```yml
+- name: Upload SARIF (if automatic upload failed)
+  uses: github/codeql-action/upload-sarif@v3
+  with:
+    sarif_file: ${{ steps.veracode-scan.outputs.sarif_file }}
+  continue-on-error: true
+```
 
 **Note:** Both features require `results.json` to be generated. If `format` is not set to `"json"`, the action will still work, but issues and alerts will only be created if `results.json` exists from a previous scan.
 
@@ -151,6 +187,9 @@ Generate GitHub Issues for IaC Misconfigurations
   Veracode-container_iac_secrets-scan:
       runs-on: ubuntu-latest
       name: Veracode Container/IaC/Secrets scan
+      permissions:
+        issues: write
+        contents: read
 
       steps:
         - name: checkout
@@ -177,6 +216,9 @@ Generate Code Scanning Alerts for IaC Misconfigurations
   Veracode-container_iac_secrets-scan:
       runs-on: ubuntu-latest
       name: Veracode Container/IaC/Secrets scan
+      permissions:
+        security-events: write
+        contents: read
 
       steps:
         - name: checkout
@@ -203,6 +245,10 @@ Generate Both Issues and Code Scanning Alerts
   Veracode-container_iac_secrets-scan:
       runs-on: ubuntu-latest
       name: Veracode Container/IaC/Secrets scan
+      permissions:
+        issues: write
+        security-events: write
+        contents: read
 
       steps:
         - name: checkout
@@ -230,6 +276,10 @@ Generate Issues/Alerts for a Different Repository
   Veracode-container_iac_secrets-scan:
       runs-on: ubuntu-latest
       name: Veracode Container/IaC/Secrets scan
+      permissions:
+        issues: write
+        security-events: write
+        contents: read
 
       steps:
         - name: checkout

@@ -80,6 +80,11 @@ export async function generateGitHubIssues(
 
     const octokit = github.getOctokit(token)
 
+    // Track success and failures
+    let successCount = 0
+    let failureCount = 0
+    const failures: string[] = []
+
     // Create issues for each unique finding
     for (const [key, findings] of Object.entries(groupedFindings)) {
       const finding = findings[0] // Use first finding as representative
@@ -99,9 +104,40 @@ export async function generateGitHubIssues(
           labels: ['iac', 'security', finding.severity.toLowerCase()]
         })
         core.info(`Created issue: ${issueTitle}`)
+        successCount++
       } catch (error: any) {
-        core.warning(`Failed to create issue for ${key}: ${error.message}`)
+        failureCount++
+        const errorMsg = error.message || 'Unknown error'
+        failures.push(`${key}: ${errorMsg}`)
+        
+        // Provide specific guidance for common errors
+        if (errorMsg.includes('Resource not accessible by integration')) {
+          core.warning(`Failed to create issue for ${key}: ${errorMsg}`)
+          core.warning(`This usually means the GitHub token lacks 'issues: write' permission or issues are disabled in the repository.`)
+        } else if (errorMsg.includes('Not Found')) {
+          core.warning(`Failed to create issue for ${key}: Repository not found or access denied`)
+        } else {
+          core.warning(`Failed to create issue for ${key}: ${errorMsg}`)
+        }
       }
+    }
+
+    // Summary
+    core.info(`\n=== GitHub Issues Summary ===`)
+    core.info(`Total findings: ${policyRelevantFindings.length}`)
+    core.info(`Unique issues attempted: ${Object.keys(groupedFindings).length}`)
+    core.info(`Successfully created: ${successCount}`)
+    core.info(`Failed: ${failureCount}`)
+    
+    if (failureCount > 0) {
+      core.warning(`\nSome issues failed to create. Common causes:`)
+      core.warning(`1. GitHub token missing 'issues: write' permission`)
+      core.warning(`2. Issues disabled in repository settings`)
+      core.warning(`3. Repository access restrictions`)
+      core.warning(`\nEnsure your workflow has the following permissions:`)
+      core.warning(`permissions:`)
+      core.warning(`  issues: write`)
+      core.warning(`  contents: read`)
     }
   } catch (error: any) {
     core.error(`Error generating GitHub issues: ${error.message}`)
