@@ -100366,6 +100366,7 @@ exports.generateGitHubIssues = void 0;
 const core = __importStar(__nccwpck_require__(2831));
 const github = __importStar(__nccwpck_require__(5371));
 const fs = __importStar(__nccwpck_require__(9896));
+const path = __importStar(__nccwpck_require__(6928));
 function generateGitHubIssues(resultsJsonPath, token, owner, repo, debug) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
@@ -100415,7 +100416,7 @@ function generateGitHubIssues(resultsJsonPath, token, owner, repo, debug) {
                     skippedCount++;
                     continue;
                 }
-                const issueBody = generateIssueBody(findings, debug);
+                const issueBody = yield generateIssueBody(findings, debug);
                 if (debug === "true") {
                     core.info(`\n=== Creating issue: ${issueTitle} ===`);
                     core.info(`Finding data available:`);
@@ -100788,116 +100789,215 @@ function groupFindingsByAVDIDAndFile(findings) {
     return grouped;
 }
 function generateIssueBody(findings, debug) {
-    const finding = findings[0];
-    if (debug === "true") {
-        core.info(`Generating issue body for finding: file=${finding.file}, title=${finding.title}`);
-        core.info(`Available fields: description=${!!finding.description}, message=${!!finding.message}, resolution=${!!finding.resolution}`);
-        core.info(`Available fields: avdid=${!!finding.avdid}, id=${!!finding.id}, namespace=${!!finding.namespace}`);
-        core.info(`Available fields: provider=${!!finding.provider}, service=${!!finding.service}, type=${!!finding.type}`);
-        core.info(`Available fields: codeLines=${!!finding.codeLines && finding.codeLines.length > 0}, references=${!!finding.references && finding.references.length > 0}`);
-    }
-    let body = `## Infrastructure as Code Misconfiguration\n\n`;
-    // Basic Information - Always show
-    const uniqueFiles = [...new Set(findings.map(f => f.file))];
-    if (uniqueFiles.length === 1) {
-        body += `**File:** \`${finding.file}\`\n\n`;
-    }
-    else {
-        body += `**Affected Files:** ${uniqueFiles.length} file(s)\n\n`;
-        uniqueFiles.forEach(file => {
-            body += `- \`${file}\`\n`;
-        });
-        body += `\n`;
-    }
-    body += `**Severity:** ${finding.severity}\n\n`;
-    // Identification - Always show if available
-    if (finding.avdid) {
-        body += `**AVD ID:** \`${finding.avdid}\`\n\n`;
-    }
-    if (finding.id) {
-        body += `**ID:** \`${finding.id}\`\n\n`;
-    }
-    // Context Information
-    if (finding.provider) {
-        body += `**Provider:** ${finding.provider}\n\n`;
-    }
-    if (finding.service) {
-        body += `**Service:** ${finding.service}\n\n`;
-    }
-    if (finding.type) {
-        body += `**Type:** ${finding.type}\n\n`;
-    }
-    if (finding.namespace) {
-        body += `**Namespace:** \`${finding.namespace}\`\n\n`;
-    }
-    if (finding.query) {
-        body += `**Query:** \`${finding.query}\`\n\n`;
-    }
-    // Location Information - Show for each file if multiple
-    if (uniqueFiles.length === 1 && finding.startLine !== undefined) {
-        body += `**Location:** Lines ${finding.startLine}`;
-        if (finding.endLine !== undefined && finding.endLine !== finding.startLine) {
-            body += `-${finding.endLine}`;
+    return __awaiter(this, void 0, void 0, function* () {
+        const finding = findings[0];
+        if (debug === "true") {
+            core.info(`Generating issue body for finding: file=${finding.file}, title=${finding.title}`);
+            core.info(`Available fields: description=${!!finding.description}, message=${!!finding.message}, resolution=${!!finding.resolution}`);
+            core.info(`Available fields: avdid=${!!finding.avdid}, id=${!!finding.id}, namespace=${!!finding.namespace}`);
+            core.info(`Available fields: provider=${!!finding.provider}, service=${!!finding.service}, type=${!!finding.type}`);
+            core.info(`Available fields: codeLines=${!!finding.codeLines && finding.codeLines.length > 0}, references=${!!finding.references && finding.references.length > 0}`);
         }
-        body += `\n\n`;
-    }
-    else if (uniqueFiles.length > 1) {
-        // Show location for each finding
-        body += `**Locations:**\n\n`;
-        findings.forEach(f => {
-            if (f.startLine !== undefined) {
-                body += `- \`${f.file}\`: Lines ${f.startLine}`;
-                if (f.endLine !== undefined && f.endLine !== f.startLine) {
-                    body += `-${f.endLine}`;
-                }
-                body += `\n`;
+        let body = `## Infrastructure as Code Misconfiguration\n\n`;
+        // File Information - Always show
+        const uniqueFiles = [...new Set(findings.map(f => f.file))];
+        if (uniqueFiles.length === 1) {
+            body += `**File:** \`${finding.file}\`\n\n`;
+        }
+        else {
+            body += `**Affected Files:** ${uniqueFiles.length} file(s)\n\n`;
+            uniqueFiles.forEach(file => {
+                body += `- \`${file}\`\n`;
+            });
+            body += `\n`;
+        }
+        // 1. Type (in bold, without "Type:" label)
+        if (finding.type) {
+            body += `**${finding.type}**\n\n`;
+        }
+        // 2. Namespace
+        if (finding.namespace) {
+            body += `**Namespace:** \`${finding.namespace}\`\n\n`;
+        }
+        // 3. Service
+        if (finding.service) {
+            body += `**Service:** ${finding.service}\n\n`;
+        }
+        // 4. Provider
+        if (finding.provider) {
+            body += `**Provider:** ${finding.provider}\n\n`;
+        }
+        // 5. Query
+        if (finding.query) {
+            body += `**Query:** \`${finding.query}\`\n\n`;
+        }
+        // 6. AVDID
+        if (finding.avdid) {
+            body += `**AVD ID:** \`${finding.avdid}\`\n\n`;
+        }
+        if (finding.id && finding.id !== finding.avdid) {
+            body += `**ID:** \`${finding.id}\`\n\n`;
+        }
+        // 7. Severity (in bold)
+        body += `**Severity:** **${finding.severity}**\n\n`;
+        // 8. Description
+        if (finding.description && finding.description.trim()) {
+            body += `### Description\n\n${finding.description.trim()}\n\n`;
+        }
+        // 9. Message
+        if (finding.message && finding.message.trim()) {
+            body += `### Message\n\n${finding.message.trim()}\n\n`;
+        }
+        // 10. Code Location - Fetch actual code from repository files
+        const codeSnippets = yield getCodeSnippetsFromFiles(findings, debug);
+        if (codeSnippets.length > 0) {
+            body += `### Code Location\n\n`;
+            codeSnippets.forEach(snippet => {
+                body += snippet;
+                body += `\n\n`;
+            });
+        }
+        // 11. Resolution
+        if (finding.resolution && finding.resolution.trim()) {
+            body += `### Resolution\n\n${finding.resolution.trim()}\n\n`;
+        }
+        // 12. Primary Reference
+        if (finding.primaryURL) {
+            body += `### Primary Reference\n\n${finding.primaryURL}\n\n`;
+        }
+        // 13. Additional References
+        if (finding.references && finding.references.length > 0) {
+            body += `### Additional References\n\n`;
+            finding.references.forEach(ref => {
+                body += `- ${ref}\n`;
+            });
+            body += `\n`;
+        }
+        // Multiple Findings Note
+        if (findings.length > 1 || uniqueFiles.length > 1) {
+            body += `\n---\n\n**Note:** This issue represents ${findings.length} finding(s) across ${uniqueFiles.length} file(s).\n\n`;
+        }
+        body += `\n---\n*Generated by Veracode Container/IaC/Secrets Scanning GitHub Action*`;
+        return body;
+    });
+}
+function getCodeSnippetsFromFiles(findings, debug) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const snippets = [];
+        // Group findings by file to handle multiple locations in the same file
+        const findingsByFile = new Map();
+        for (const finding of findings) {
+            if (!findingsByFile.has(finding.file)) {
+                findingsByFile.set(finding.file, []);
             }
-        });
-        body += `\n`;
-    }
-    // Description Section - Always show if available
-    if (finding.description && finding.description.trim()) {
-        body += `### Description\n\n${finding.description.trim()}\n\n`;
-    }
-    // Message Section - Always show if available
-    if (finding.message && finding.message.trim()) {
-        body += `### Message\n\n${finding.message.trim()}\n\n`;
-    }
-    // Code Location Section - Show the actual code
-    // If multiple files, show code for the first file (or all if they're different)
-    if (finding.codeLines && finding.codeLines.length > 0) {
-        body += `### Code Location\n\n`;
-        // Determine the file extension for syntax highlighting
-        const fileExt = finding.file.split('.').pop() || '';
-        const language = getLanguageFromExtension(fileExt);
-        body += `\`\`\`${language}\n`;
+            findingsByFile.get(finding.file).push(finding);
+        }
+        for (const [file, fileFindings] of findingsByFile.entries()) {
+            try {
+                // Try to read the file from the repository
+                // The file path might be relative to the workspace root
+                let filePath = file;
+                if (!path.isAbsolute(filePath)) {
+                    // Try common locations
+                    const possiblePaths = [
+                        filePath,
+                        path.join(process.cwd(), filePath),
+                        path.join(process.cwd(), '..', filePath)
+                    ];
+                    let found = false;
+                    for (const possiblePath of possiblePaths) {
+                        if (fs.existsSync(possiblePath)) {
+                            filePath = possiblePath;
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        if (debug === "true") {
+                            core.warning(`File not found: ${file}, trying paths: ${possiblePaths.join(', ')}`);
+                        }
+                        // Fall back to code lines from JSON if file not found
+                        const firstFinding = fileFindings[0];
+                        if (firstFinding.codeLines && firstFinding.codeLines.length > 0) {
+                            snippets.push(generateCodeSnippetFromJson(firstFinding, file));
+                        }
+                        continue;
+                    }
+                }
+                const fileContent = fs.readFileSync(filePath, 'utf8');
+                const lines = fileContent.split('\n');
+                // Determine the file extension for syntax highlighting
+                const fileExt = file.split('.').pop() || '';
+                const language = getLanguageFromExtension(fileExt);
+                // Get all unique line ranges for this file
+                const lineRanges = [];
+                for (const f of fileFindings) {
+                    if (f.startLine !== undefined) {
+                        const start = f.startLine;
+                        const end = f.endLine !== undefined ? f.endLine : f.startLine;
+                        lineRanges.push({ start, end });
+                    }
+                }
+                // Sort and merge overlapping ranges
+                lineRanges.sort((a, b) => a.start - b.start);
+                const mergedRanges = [];
+                for (const range of lineRanges) {
+                    if (mergedRanges.length === 0) {
+                        mergedRanges.push(range);
+                    }
+                    else {
+                        const last = mergedRanges[mergedRanges.length - 1];
+                        if (range.start <= last.end + 10) { // Merge if within 10 lines (accounting for context)
+                            last.end = Math.max(last.end, range.end);
+                        }
+                        else {
+                            mergedRanges.push(range);
+                        }
+                    }
+                }
+                // Generate code snippet for each range
+                for (const range of mergedRanges) {
+                    const startLine = Math.max(1, range.start - 5); // 5 lines before
+                    const endLine = Math.min(lines.length, range.end + 5); // 5 lines after
+                    let snippet = `**File:** \`${file}\`\n\n`;
+                    snippet += `\`\`\`${language}\n`;
+                    for (let i = startLine - 1; i < endLine; i++) {
+                        const lineNum = i + 1;
+                        const line = lines[i] || '';
+                        const isHighlighted = lineNum >= range.start && lineNum <= range.end;
+                        // Add line number and content
+                        snippet += `${lineNum.toString().padStart(4, ' ')} | ${line}\n`;
+                    }
+                    snippet += `\`\`\`\n`;
+                    snippets.push(snippet);
+                }
+            }
+            catch (error) {
+                if (debug === "true") {
+                    core.warning(`Error reading file ${file}: ${error.message}`);
+                }
+                // Fall back to code lines from JSON if file read fails
+                const firstFinding = fileFindings[0];
+                if (firstFinding.codeLines && firstFinding.codeLines.length > 0) {
+                    snippets.push(generateCodeSnippetFromJson(firstFinding, file));
+                }
+            }
+        }
+        return snippets;
+    });
+}
+function generateCodeSnippetFromJson(finding, file) {
+    const fileExt = file.split('.').pop() || '';
+    const language = getLanguageFromExtension(fileExt);
+    let snippet = `**File:** \`${file}\`\n\n`;
+    snippet += `\`\`\`${language}\n`;
+    if (finding.codeLines) {
         finding.codeLines.forEach(line => {
-            // Show line number and content
-            body += `${line.number.toString().padStart(4, ' ')} | ${line.content}\n`;
+            snippet += `${line.number.toString().padStart(4, ' ')} | ${line.content}\n`;
         });
-        body += `\`\`\`\n\n`;
     }
-    // Resolution Section - Always show if available
-    if (finding.resolution && finding.resolution.trim()) {
-        body += `### Resolution\n\n${finding.resolution.trim()}\n\n`;
-    }
-    // References Section
-    if (finding.primaryURL) {
-        body += `### Primary Reference\n\n${finding.primaryURL}\n\n`;
-    }
-    if (finding.references && finding.references.length > 0) {
-        body += `### Additional References\n\n`;
-        finding.references.forEach(ref => {
-            body += `- ${ref}\n`;
-        });
-        body += `\n`;
-    }
-    // Multiple Findings Note
-    if (findings.length > 1 || uniqueFiles.length > 1) {
-        body += `\n---\n\n**Note:** This issue represents ${findings.length} finding(s) across ${uniqueFiles.length} file(s).\n\n`;
-    }
-    body += `\n---\n*Generated by Veracode Container/IaC/Secrets Scanning GitHub Action*`;
-    return body;
+    snippet += `\`\`\`\n`;
+    return snippet;
 }
 function getLanguageFromExtension(ext) {
     const languageMap = {

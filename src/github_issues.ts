@@ -1,6 +1,7 @@
 import * as core from "@actions/core"
 import * as github from "@actions/github"
 import * as fs from 'fs'
+import * as path from 'path'
 
 interface PolicyFailure {
   msg: string
@@ -126,7 +127,7 @@ export async function generateGitHubIssues(
         continue
       }
 
-      const issueBody = generateIssueBody(findings, debug)
+      const issueBody = await generateIssueBody(findings, debug)
 
       if (debug === "true") {
         core.info(`\n=== Creating issue: ${issueTitle} ===`)
@@ -569,7 +570,7 @@ function groupFindingsByAVDIDAndFile(
   return grouped
 }
 
-function generateIssueBody(findings: PolicyRelevantFinding[], debug?: string): string {
+async function generateIssueBody(findings: PolicyRelevantFinding[], debug?: string): Promise<string> {
   const finding = findings[0]
   
   if (debug === "true") {
@@ -582,7 +583,7 @@ function generateIssueBody(findings: PolicyRelevantFinding[], debug?: string): s
   
   let body = `## Infrastructure as Code Misconfiguration\n\n`
   
-  // Basic Information - Always show
+  // File Information - Always show
   const uniqueFiles = [...new Set(findings.map(f => f.file))]
   if (uniqueFiles.length === 1) {
     body += `**File:** \`${finding.file}\`\n\n`
@@ -594,97 +595,74 @@ function generateIssueBody(findings: PolicyRelevantFinding[], debug?: string): s
     body += `\n`
   }
   
-  body += `**Severity:** ${finding.severity}\n\n`
-  
-  // Identification - Always show if available
-  if (finding.avdid) {
-    body += `**AVD ID:** \`${finding.avdid}\`\n\n`
-  }
-  
-  if (finding.id) {
-    body += `**ID:** \`${finding.id}\`\n\n`
-  }
-
-  // Context Information
-  if (finding.provider) {
-    body += `**Provider:** ${finding.provider}\n\n`
-  }
-
-  if (finding.service) {
-    body += `**Service:** ${finding.service}\n\n`
-  }
-
+  // 1. Type (in bold, without "Type:" label)
   if (finding.type) {
-    body += `**Type:** ${finding.type}\n\n`
+    body += `**${finding.type}**\n\n`
   }
 
+  // 2. Namespace
   if (finding.namespace) {
     body += `**Namespace:** \`${finding.namespace}\`\n\n`
   }
 
+  // 3. Service
+  if (finding.service) {
+    body += `**Service:** ${finding.service}\n\n`
+  }
+
+  // 4. Provider
+  if (finding.provider) {
+    body += `**Provider:** ${finding.provider}\n\n`
+  }
+
+  // 5. Query
   if (finding.query) {
     body += `**Query:** \`${finding.query}\`\n\n`
   }
 
-  // Location Information - Show for each file if multiple
-  if (uniqueFiles.length === 1 && finding.startLine !== undefined) {
-    body += `**Location:** Lines ${finding.startLine}`
-    if (finding.endLine !== undefined && finding.endLine !== finding.startLine) {
-      body += `-${finding.endLine}`
-    }
-    body += `\n\n`
-  } else if (uniqueFiles.length > 1) {
-    // Show location for each finding
-    body += `**Locations:**\n\n`
-    findings.forEach(f => {
-      if (f.startLine !== undefined) {
-        body += `- \`${f.file}\`: Lines ${f.startLine}`
-        if (f.endLine !== undefined && f.endLine !== f.startLine) {
-          body += `-${f.endLine}`
-        }
-        body += `\n`
-      }
-    })
-    body += `\n`
+  // 6. AVDID
+  if (finding.avdid) {
+    body += `**AVD ID:** \`${finding.avdid}\`\n\n`
+  }
+  
+  if (finding.id && finding.id !== finding.avdid) {
+    body += `**ID:** \`${finding.id}\`\n\n`
   }
 
-  // Description Section - Always show if available
+  // 7. Severity (in bold)
+  body += `**Severity:** **${finding.severity}**\n\n`
+
+  // 8. Description
   if (finding.description && finding.description.trim()) {
     body += `### Description\n\n${finding.description.trim()}\n\n`
   }
 
-  // Message Section - Always show if available
+  // 9. Message
   if (finding.message && finding.message.trim()) {
     body += `### Message\n\n${finding.message.trim()}\n\n`
   }
 
-  // Code Location Section - Show the actual code
-  // If multiple files, show code for the first file (or all if they're different)
-  if (finding.codeLines && finding.codeLines.length > 0) {
+  // 10. Code Location - Fetch actual code from repository files
+  const codeSnippets = await getCodeSnippetsFromFiles(findings, debug)
+  if (codeSnippets.length > 0) {
     body += `### Code Location\n\n`
-    
-    // Determine the file extension for syntax highlighting
-    const fileExt = finding.file.split('.').pop() || ''
-    const language = getLanguageFromExtension(fileExt)
-    
-    body += `\`\`\`${language}\n`
-    finding.codeLines.forEach(line => {
-      // Show line number and content
-      body += `${line.number.toString().padStart(4, ' ')} | ${line.content}\n`
+    codeSnippets.forEach(snippet => {
+      body += snippet
+      body += `\n\n`
     })
-    body += `\`\`\`\n\n`
   }
 
-  // Resolution Section - Always show if available
+  // 11. Resolution
   if (finding.resolution && finding.resolution.trim()) {
     body += `### Resolution\n\n${finding.resolution.trim()}\n\n`
   }
 
-  // References Section
+  // 12. Primary Reference
   if (finding.primaryURL) {
     body += `### Primary Reference\n\n${finding.primaryURL}\n\n`
   }
 
+  // 13. Additional References
   if (finding.references && finding.references.length > 0) {
     body += `### Additional References\n\n`
     finding.references.forEach(ref => {
@@ -701,6 +679,138 @@ function generateIssueBody(findings: PolicyRelevantFinding[], debug?: string): s
   body += `\n---\n*Generated by Veracode Container/IaC/Secrets Scanning GitHub Action*`
 
   return body
+}
+
+async function getCodeSnippetsFromFiles(findings: PolicyRelevantFinding[], debug?: string): Promise<string[]> {
+  const snippets: string[] = []
+  
+  // Group findings by file to handle multiple locations in the same file
+  const findingsByFile = new Map<string, PolicyRelevantFinding[]>()
+  for (const finding of findings) {
+    if (!findingsByFile.has(finding.file)) {
+      findingsByFile.set(finding.file, [])
+    }
+    findingsByFile.get(finding.file)!.push(finding)
+  }
+
+  for (const [file, fileFindings] of findingsByFile.entries()) {
+    try {
+      // Try to read the file from the repository
+      // The file path might be relative to the workspace root
+      let filePath = file
+      if (!path.isAbsolute(filePath)) {
+        // Try common locations
+        const possiblePaths = [
+          filePath,
+          path.join(process.cwd(), filePath),
+          path.join(process.cwd(), '..', filePath)
+        ]
+        
+        let found = false
+        for (const possiblePath of possiblePaths) {
+          if (fs.existsSync(possiblePath)) {
+            filePath = possiblePath
+            found = true
+            break
+          }
+        }
+        
+        if (!found) {
+          if (debug === "true") {
+            core.warning(`File not found: ${file}, trying paths: ${possiblePaths.join(', ')}`)
+          }
+          // Fall back to code lines from JSON if file not found
+          const firstFinding = fileFindings[0]
+          if (firstFinding.codeLines && firstFinding.codeLines.length > 0) {
+            snippets.push(generateCodeSnippetFromJson(firstFinding, file))
+          }
+          continue
+        }
+      }
+
+      const fileContent = fs.readFileSync(filePath, 'utf8')
+      const lines = fileContent.split('\n')
+      
+      // Determine the file extension for syntax highlighting
+      const fileExt = file.split('.').pop() || ''
+      const language = getLanguageFromExtension(fileExt)
+      
+      // Get all unique line ranges for this file
+      const lineRanges: Array<{start: number, end: number}> = []
+      for (const f of fileFindings) {
+        if (f.startLine !== undefined) {
+          const start = f.startLine
+          const end = f.endLine !== undefined ? f.endLine : f.startLine
+          lineRanges.push({ start, end })
+        }
+      }
+      
+      // Sort and merge overlapping ranges
+      lineRanges.sort((a, b) => a.start - b.start)
+      const mergedRanges: Array<{start: number, end: number}> = []
+      for (const range of lineRanges) {
+        if (mergedRanges.length === 0) {
+          mergedRanges.push(range)
+        } else {
+          const last = mergedRanges[mergedRanges.length - 1]
+          if (range.start <= last.end + 10) { // Merge if within 10 lines (accounting for context)
+            last.end = Math.max(last.end, range.end)
+          } else {
+            mergedRanges.push(range)
+          }
+        }
+      }
+      
+      // Generate code snippet for each range
+      for (const range of mergedRanges) {
+        const startLine = Math.max(1, range.start - 5) // 5 lines before
+        const endLine = Math.min(lines.length, range.end + 5) // 5 lines after
+        
+        let snippet = `**File:** \`${file}\`\n\n`
+        snippet += `\`\`\`${language}\n`
+        
+        for (let i = startLine - 1; i < endLine; i++) {
+          const lineNum = i + 1
+          const line = lines[i] || ''
+          const isHighlighted = lineNum >= range.start && lineNum <= range.end
+          
+          // Add line number and content
+          snippet += `${lineNum.toString().padStart(4, ' ')} | ${line}\n`
+        }
+        
+        snippet += `\`\`\`\n`
+        snippets.push(snippet)
+      }
+    } catch (error: any) {
+      if (debug === "true") {
+        core.warning(`Error reading file ${file}: ${error.message}`)
+      }
+      // Fall back to code lines from JSON if file read fails
+      const firstFinding = fileFindings[0]
+      if (firstFinding.codeLines && firstFinding.codeLines.length > 0) {
+        snippets.push(generateCodeSnippetFromJson(firstFinding, file))
+      }
+    }
+  }
+  
+  return snippets
+}
+
+function generateCodeSnippetFromJson(finding: PolicyRelevantFinding, file: string): string {
+  const fileExt = file.split('.').pop() || ''
+  const language = getLanguageFromExtension(fileExt)
+  
+  let snippet = `**File:** \`${file}\`\n\n`
+  snippet += `\`\`\`${language}\n`
+  
+  if (finding.codeLines) {
+    finding.codeLines.forEach(line => {
+      snippet += `${line.number.toString().padStart(4, ' ')} | ${line.content}\n`
+    })
+  }
+  
+  snippet += `\`\`\`\n`
+  return snippet
 }
 
 function getLanguageFromExtension(ext: string): string {
