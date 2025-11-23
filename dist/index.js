@@ -100375,7 +100375,7 @@ function generateGitHubIssues(resultsJsonPath, token, owner, repo, debug) {
             const resultsContent = fs.readFileSync(resultsJsonPath, 'utf8');
             const results = JSON.parse(resultsContent);
             // Extract policy-relevant findings
-            const policyRelevantFindings = extractPolicyRelevantFindings(results);
+            const policyRelevantFindings = extractPolicyRelevantFindings(results, debug);
             if (policyRelevantFindings.length === 0) {
                 core.info('No policy-relevant misconfigurations found');
                 return;
@@ -100618,126 +100618,194 @@ function isDuplicateIssue(existingIssues, file, title, avdid) {
         return false;
     });
 }
-function extractPolicyRelevantFindings(results) {
-    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
+function extractPolicyRelevantFindings(results, debug) {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m, _o, _p, _q, _r;
     const findings = [];
     // Get policy failures
     const policyFailures = ((_b = (_a = results["policy-results"]) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.failures) || [];
+    if (debug === "true") {
+        core.info(`Found ${policyFailures.length} policy failures`);
+    }
     // Get all misconfigurations
     const allMisconfigurations = results.misconfigurations || [];
-    // Create a comprehensive map: file -> title -> misconfigurations
-    // Also create AVDID -> misconfigurations map for consolidation
-    const misconfigMap = new Map();
-    const avdidMap = new Map();
+    if (debug === "true") {
+        core.info(`Found ${allMisconfigurations.length} misconfiguration result groups`);
+    }
+    // Build a comprehensive index: normalize file paths and titles for better matching
+    // Index by: normalized file path -> normalized title -> misconfigurations
+    const misconfigIndex = new Map();
+    // Also build a flat list for fallback matching
+    const allMisconfigsFlat = [];
     for (const misconfigResult of allMisconfigurations) {
-        const file = misconfigResult.Target || '';
-        // Build file -> title map
-        if (!misconfigMap.has(file)) {
-            misconfigMap.set(file, new Map());
+        const file = (misconfigResult.Target || '').trim();
+        const normalizedFile = file.toLowerCase();
+        if (!misconfigIndex.has(normalizedFile)) {
+            misconfigIndex.set(normalizedFile, new Map());
         }
-        const fileMap = misconfigMap.get(file);
+        const fileMap = misconfigIndex.get(normalizedFile);
         for (const misconfig of misconfigResult.Misconfigurations || []) {
-            const title = misconfig.Title || misconfig.ID || 'Unknown';
-            // Add to file -> title map
-            if (!fileMap.has(title)) {
-                fileMap.set(title, []);
+            // Only process FAIL status misconfigurations (policy-relevant)
+            if (misconfig.Status !== 'FAIL') {
+                continue;
             }
-            fileMap.get(title).push(misconfig);
-            // Also add to AVDID map for consolidation
-            if (misconfig.AVDID) {
-                if (!avdidMap.has(misconfig.AVDID)) {
-                    avdidMap.set(misconfig.AVDID, []);
-                }
-                avdidMap.get(misconfig.AVDID).push(misconfig);
+            const title = (misconfig.Title || misconfig.ID || 'Unknown').trim();
+            const normalizedTitle = title.toLowerCase();
+            // Add to index
+            if (!fileMap.has(normalizedTitle)) {
+                fileMap.set(normalizedTitle, []);
             }
+            fileMap.get(normalizedTitle).push(misconfig);
+            // Also add to flat list
+            allMisconfigsFlat.push({ file, misconfig });
         }
+    }
+    if (debug === "true") {
+        core.info(`Indexed ${allMisconfigsFlat.length} FAIL status misconfigurations`);
     }
     // Parse policy failures and match with misconfigurations
     for (const failure of policyFailures) {
         // Policy failure format: "config.rego failed - Found {SEVERITY} issues in infrastructure as code: {file}: {title}"
         const match = failure.msg.match(/Found (CRITICAL|HIGH|MEDIUM|LOW) issues in infrastructure as code: ([^:]+): (.+)/);
-        if (match) {
-            const severity = match[1];
-            const file = match[2].trim();
-            const title = match[3].trim();
-            // Find matching misconfiguration - try exact match first
-            let matchedMisconfig = null;
-            const fileMap = misconfigMap.get(file);
-            if (fileMap) {
-                const misconfigs = fileMap.get(title) || [];
-                if (misconfigs.length > 0) {
-                    matchedMisconfig = misconfigs[0]; // Use first match
+        if (!match) {
+            if (debug === "true") {
+                core.info(`Could not parse policy failure: ${failure.msg}`);
+            }
+            continue;
+        }
+        const severity = match[1];
+        const file = match[2].trim();
+        const title = match[3].trim();
+        const normalizedFile = file.toLowerCase();
+        const normalizedTitle = title.toLowerCase();
+        if (debug === "true") {
+            core.info(`Looking for match: file="${file}", title="${title}"`);
+        }
+        // Find matching misconfiguration - try multiple strategies
+        let matchedMisconfig = null;
+        // Strategy 1: Exact normalized match
+        const fileMap = misconfigIndex.get(normalizedFile);
+        if (fileMap) {
+            const misconfigs = fileMap.get(normalizedTitle) || [];
+            if (misconfigs.length > 0) {
+                matchedMisconfig = misconfigs[0];
+                if (debug === "true") {
+                    core.info(`Found exact match via normalized index`);
                 }
             }
-            // If no exact match found, try case-insensitive match
-            if (!matchedMisconfig && fileMap) {
-                const titleLower = title.toLowerCase();
-                for (const [mapTitle, misconfigs] of fileMap.entries()) {
-                    if (mapTitle.toLowerCase() === titleLower && misconfigs.length > 0) {
-                        matchedMisconfig = misconfigs[0];
+        }
+        // Strategy 2: Try exact file match with case-insensitive title search
+        if (!matchedMisconfig && fileMap) {
+            for (const [mapTitle, misconfigs] of fileMap.entries()) {
+                if (mapTitle === normalizedTitle && misconfigs.length > 0) {
+                    matchedMisconfig = misconfigs[0];
+                    if (debug === "true") {
+                        core.info(`Found match via case-insensitive title search`);
+                    }
+                    break;
+                }
+            }
+        }
+        // Strategy 3: Try partial title match (in case titles have slight variations)
+        if (!matchedMisconfig && fileMap) {
+            for (const [mapTitle, misconfigs] of fileMap.entries()) {
+                // Check if either title contains the other (for partial matches)
+                if ((mapTitle.includes(normalizedTitle) || normalizedTitle.includes(mapTitle)) && misconfigs.length > 0) {
+                    matchedMisconfig = misconfigs[0];
+                    if (debug === "true") {
+                        core.info(`Found partial title match: "${mapTitle}" matches "${normalizedTitle}"`);
+                    }
+                    break;
+                }
+            }
+        }
+        // Strategy 4: Search all misconfigurations for same file and similar title
+        if (!matchedMisconfig) {
+            for (const { file: misconfigFile, misconfig } of allMisconfigsFlat) {
+                const misconfigFileNormalized = misconfigFile.toLowerCase();
+                if (misconfigFileNormalized === normalizedFile) {
+                    const misconfigTitle = (misconfig.Title || misconfig.ID || '').toLowerCase().trim();
+                    if (misconfigTitle === normalizedTitle ||
+                        misconfigTitle.includes(normalizedTitle) ||
+                        normalizedTitle.includes(misconfigTitle)) {
+                        matchedMisconfig = misconfig;
+                        if (debug === "true") {
+                            core.info(`Found match via flat search: "${misconfigTitle}" matches "${normalizedTitle}"`);
+                        }
                         break;
                     }
                 }
             }
-            // If still no match, search all misconfigurations for matching title (case-insensitive)
-            if (!matchedMisconfig) {
-                const titleLower = title.toLowerCase();
-                for (const misconfigResult of allMisconfigurations) {
-                    // Only check misconfigurations from the same file
-                    if (misconfigResult.Target === file) {
-                        for (const misconfig of misconfigResult.Misconfigurations || []) {
-                            const misconfigTitle = (misconfig.Title || misconfig.ID || '').toLowerCase();
-                            if (misconfigTitle === titleLower) {
-                                matchedMisconfig = misconfig;
-                                break;
-                            }
-                        }
-                        if (matchedMisconfig)
-                            break;
-                    }
+        }
+        if (matchedMisconfig) {
+            // Extract all available information - ensure we get everything
+            // For code lines, include all lines that have content (don't filter by IsCause too strictly)
+            const codeLines = ((_e = (_d = (_c = matchedMisconfig.CauseMetadata) === null || _c === void 0 ? void 0 : _c.Code) === null || _d === void 0 ? void 0 : _d.Lines) === null || _e === void 0 ? void 0 : _e.filter(line => {
+                // Include lines that have content, prioritizing IsCause=true lines but not excluding others
+                if (!line.Content || line.Content.trim().length === 0) {
+                    return false;
                 }
-            }
-            if (matchedMisconfig) {
-                // Extract all available information - ensure we get everything
-                const codeLines = ((_e = (_d = (_c = matchedMisconfig.CauseMetadata) === null || _c === void 0 ? void 0 : _c.Code) === null || _d === void 0 ? void 0 : _d.Lines) === null || _e === void 0 ? void 0 : _e.filter(line => line.IsCause !== false && line.Content && line.Content.trim()).map(line => ({
+                // Prefer lines marked as cause, but include others if they're part of the context
+                return true;
+            }).map(line => ({
+                number: line.Number,
+                content: line.Content.trim()
+            }))) || undefined;
+            // If we have too many lines, prioritize IsCause=true lines
+            let finalCodeLines = codeLines;
+            if (codeLines && codeLines.length > 20) {
+                const causeLines = ((_h = (_g = (_f = matchedMisconfig.CauseMetadata) === null || _f === void 0 ? void 0 : _f.Code) === null || _g === void 0 ? void 0 : _g.Lines) === null || _h === void 0 ? void 0 : _h.filter(line => line.IsCause === true && line.Content && line.Content.trim().length > 0).map(line => ({
                     number: line.Number,
                     content: line.Content.trim()
-                }))) || undefined;
-                const finding = {
-                    file,
-                    title,
-                    severity,
-                    description: ((_f = matchedMisconfig.Description) === null || _f === void 0 ? void 0 : _f.trim()) || undefined,
-                    message: ((_g = matchedMisconfig.Message) === null || _g === void 0 ? void 0 : _g.trim()) || undefined,
-                    resolution: ((_h = matchedMisconfig.Resolution) === null || _h === void 0 ? void 0 : _h.trim()) || undefined,
-                    startLine: (_j = matchedMisconfig.CauseMetadata) === null || _j === void 0 ? void 0 : _j.StartLine,
-                    endLine: (_k = matchedMisconfig.CauseMetadata) === null || _k === void 0 ? void 0 : _k.EndLine,
-                    id: matchedMisconfig.ID || undefined,
-                    avdid: matchedMisconfig.AVDID || undefined,
-                    primaryURL: matchedMisconfig.PrimaryURL || undefined,
-                    provider: ((_l = matchedMisconfig.CauseMetadata) === null || _l === void 0 ? void 0 : _l.Provider) || undefined,
-                    service: ((_m = matchedMisconfig.CauseMetadata) === null || _m === void 0 ? void 0 : _m.Service) || undefined,
-                    namespace: matchedMisconfig.Namespace || undefined,
-                    query: matchedMisconfig.Query || undefined,
-                    references: matchedMisconfig.References && matchedMisconfig.References.length > 0
-                        ? matchedMisconfig.References
-                        : undefined,
-                    type: matchedMisconfig.Type || undefined,
-                    codeLines: codeLines && codeLines.length > 0 ? codeLines : undefined
-                };
-                findings.push(finding);
+                }))) || [];
+                if (causeLines.length > 0) {
+                    finalCodeLines = causeLines;
+                }
             }
-            else {
-                // If no match found, create minimal finding from policy failure
-                // This should rarely happen if the JSON structure is correct
-                core.warning(`Could not find matching misconfiguration for: ${file} - ${title}`);
-                findings.push({
-                    file,
-                    title,
-                    severity
-                });
+            const finding = {
+                file,
+                title,
+                severity,
+                description: ((_j = matchedMisconfig.Description) === null || _j === void 0 ? void 0 : _j.trim()) || undefined,
+                message: ((_k = matchedMisconfig.Message) === null || _k === void 0 ? void 0 : _k.trim()) || undefined,
+                resolution: ((_l = matchedMisconfig.Resolution) === null || _l === void 0 ? void 0 : _l.trim()) || undefined,
+                startLine: (_m = matchedMisconfig.CauseMetadata) === null || _m === void 0 ? void 0 : _m.StartLine,
+                endLine: (_o = matchedMisconfig.CauseMetadata) === null || _o === void 0 ? void 0 : _o.EndLine,
+                id: matchedMisconfig.ID || undefined,
+                avdid: matchedMisconfig.AVDID || undefined,
+                primaryURL: matchedMisconfig.PrimaryURL || undefined,
+                provider: ((_p = matchedMisconfig.CauseMetadata) === null || _p === void 0 ? void 0 : _p.Provider) || undefined,
+                service: ((_q = matchedMisconfig.CauseMetadata) === null || _q === void 0 ? void 0 : _q.Service) || undefined,
+                namespace: matchedMisconfig.Namespace || undefined,
+                query: matchedMisconfig.Query || undefined,
+                references: matchedMisconfig.References && matchedMisconfig.References.length > 0
+                    ? matchedMisconfig.References
+                    : undefined,
+                type: matchedMisconfig.Type || undefined,
+                codeLines: finalCodeLines && finalCodeLines.length > 0 ? finalCodeLines : undefined
+            };
+            if (debug === "true") {
+                core.info(`Extracted finding: description=${!!finding.description}, message=${!!finding.message}, resolution=${!!finding.resolution}, codeLines=${((_r = finding.codeLines) === null || _r === void 0 ? void 0 : _r.length) || 0}`);
             }
+            findings.push(finding);
         }
+        else {
+            // If no match found, create minimal finding from policy failure
+            core.warning(`Could not find matching misconfiguration for: ${file} - ${title}`);
+            if (debug === "true") {
+                core.info(`Available files in index: ${Array.from(misconfigIndex.keys()).slice(0, 5).join(', ')}...`);
+                if (fileMap) {
+                    core.info(`Available titles for file "${file}": ${Array.from(fileMap.keys()).slice(0, 5).join(', ')}...`);
+                }
+            }
+            findings.push({
+                file,
+                title,
+                severity
+            });
+        }
+    }
+    if (debug === "true") {
+        core.info(`Extracted ${findings.length} policy-relevant findings`);
     }
     return findings;
 }
