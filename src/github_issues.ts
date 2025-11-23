@@ -123,10 +123,31 @@ export async function generateGitHubIssues(
         continue
       }
 
-      const issueBody = generateIssueBody(findings)
+      const issueBody = generateIssueBody(findings, debug)
 
       if (debug === "true") {
-        core.info(`Creating issue: ${issueTitle}`)
+        core.info(`\n=== Creating issue: ${issueTitle} ===`)
+        core.info(`Finding data available:`)
+        core.info(`  - description: ${finding.description ? `YES (${finding.description.length} chars)` : 'NO'}`)
+        core.info(`  - message: ${finding.message ? `YES (${finding.message.length} chars)` : 'NO'}`)
+        core.info(`  - resolution: ${finding.resolution ? `YES (${finding.resolution.length} chars)` : 'NO'}`)
+        core.info(`  - avdid: ${finding.avdid || 'NO'}`)
+        core.info(`  - id: ${finding.id || 'NO'}`)
+        core.info(`  - namespace: ${finding.namespace || 'NO'}`)
+        core.info(`  - query: ${finding.query || 'NO'}`)
+        core.info(`  - provider: ${finding.provider || 'NO'}`)
+        core.info(`  - service: ${finding.service || 'NO'}`)
+        core.info(`  - type: ${finding.type || 'NO'}`)
+        core.info(`  - codeLines: ${finding.codeLines ? `${finding.codeLines.length} lines` : 'NO'}`)
+        core.info(`  - references: ${finding.references ? `${finding.references.length} refs` : 'NO'}`)
+        core.info(`  - startLine: ${finding.startLine || 'NO'}, endLine: ${finding.endLine || 'NO'}`)
+        core.info(`  - primaryURL: ${finding.primaryURL || 'NO'}`)
+        core.info(`Issue body length: ${issueBody.length} characters`)
+        if (issueBody.length < 200) {
+          core.info(`Issue body content:\n${issueBody}`)
+        } else {
+          core.info(`Issue body preview (first 800 chars):\n${issueBody.substring(0, 800)}...`)
+        }
       }
 
       try {
@@ -663,8 +684,17 @@ function groupFindingsByAVDIDAndFile(
   return grouped
 }
 
-function generateIssueBody(findings: PolicyRelevantFinding[]): string {
+function generateIssueBody(findings: PolicyRelevantFinding[], debug?: string): string {
   const finding = findings[0]
+  
+  if (debug === "true") {
+    core.info(`Generating issue body for finding: file=${finding.file}, title=${finding.title}`)
+    core.info(`Available fields: description=${!!finding.description}, message=${!!finding.message}, resolution=${!!finding.resolution}`)
+    core.info(`Available fields: avdid=${!!finding.avdid}, id=${!!finding.id}, namespace=${!!finding.namespace}`)
+    core.info(`Available fields: provider=${!!finding.provider}, service=${!!finding.service}, type=${!!finding.type}`)
+    core.info(`Available fields: codeLines=${!!finding.codeLines && finding.codeLines.length > 0}, references=${!!finding.references && finding.references.length > 0}`)
+  }
+  
   let body = `## Infrastructure as Code Misconfiguration\n\n`
   
   // Basic Information - Always show
