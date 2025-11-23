@@ -45,6 +45,20 @@ inputs:
     description: 'Specifies the platform environment type — use CLOUD for GitHub.com or ENTERPRISE for GitHub Enterprise Server (GHES).'
     default: 'CLOUD'
     required: false
+  issues:
+    description: 'Generate GitHub issues for policy-relevant misconfigurations'
+    required: false
+    default: 'false'
+  codeScanningAlerts:
+    description: 'Generate GitHub code scanning alerts for policy-relevant misconfigurations'
+    required: false
+    default: 'false'
+  github_owner:
+    description: 'GitHub repository owner (defaults to the repository where the action is running)'
+    required: false
+  github_repository:
+    description: 'GitHub repository name (defaults to the repository where the action is running)'
+    required: false
 runs:
   using: 'node20'
   main: 'dist/index.js'

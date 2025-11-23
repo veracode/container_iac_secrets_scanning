@@ -8,6 +8,8 @@ import * as fs from 'fs';
 import { run_cli } from "./run_command";
 import { install_cli } from "./install_cli";
 import { store_artifacts } from "./store_artifacts";
+import { generateGitHubIssues } from "./github_issues";
+import { generateCodeScanningAlerts } from "./github_code_scanning_alerts";
 
 export async function ContainerScan(parameters:any) {
 
@@ -172,6 +174,104 @@ export async function ContainerScan(parameters:any) {
         else {
           core.info('Veracode Container Scanning passed')
         }
+    }
+
+    // Generate GitHub issues if enabled
+    if ( parameters.issues == "true" ){
+      try {
+        // Determine owner and repo
+        let owner: string
+        let repo: string
+        
+        if ( parameters.github_owner && parameters.github_repository ) {
+          owner = parameters.github_owner
+          repo = parameters.github_repository
+        } else {
+          // Default to current repository
+          const repository:any = process.env.GITHUB_REPOSITORY
+          const repoParts = repository.split("/")
+          owner = repoParts[0]
+          repo = repoParts[1]
+        }
+
+        // Check if results.json exists
+        let resultsJsonPath = 'results.json'
+        if (fs.existsSync(resultsJsonPath)) {
+          await generateGitHubIssues(
+            resultsJsonPath,
+            parameters.token,
+            owner,
+            repo,
+            parameters.debug
+          )
+        } else {
+          core.warning('results.json not found, skipping GitHub issues generation')
+        }
+      } catch (error: any) {
+        core.error(`Error generating GitHub issues: ${error.message}`)
+      }
+    }
+
+    // Generate code scanning alerts if enabled
+    if ( parameters.codeScanningAlerts == "true" ){
+      try {
+        // Check if results.json exists
+        let resultsJsonPath = 'results.json'
+        if (fs.existsSync(resultsJsonPath)) {
+          const sarifPath = 'veracode-iac-scan-results.sarif'
+          await generateCodeScanningAlerts(
+            resultsJsonPath,
+            sarifPath,
+            parameters.debug
+          )
+          
+          // Upload SARIF file using GitHub API
+          const octokit = github.getOctokit(parameters.token)
+          const context = github.context
+          
+          // Determine owner and repo
+          let owner: string
+          let repo: string
+          
+          if ( parameters.github_owner && parameters.github_repository ) {
+            owner = parameters.github_owner
+            repo = parameters.github_repository
+          } else {
+            // Default to current repository
+            const repository:any = process.env.GITHUB_REPOSITORY
+            const repoParts = repository.split("/")
+            owner = repoParts[0]
+            repo = repoParts[1]
+          }
+
+          // Read SARIF file
+          const sarifContent = fs.readFileSync(sarifPath, 'utf8')
+          const sarifBase64 = Buffer.from(sarifContent).toString('base64')
+
+          // Upload SARIF using Code Scanning API
+          // Note: The API requires the sarif to be base64 encoded
+          try {
+            const response = await octokit.request('POST /repos/{owner}/{repo}/code-scanning/sarifs', {
+              owner,
+              repo,
+              commit_sha: context.sha,
+              ref: context.ref,
+              sarif: sarifBase64,
+              tool_name: 'veracode-iac-scanning'
+            })
+            core.info(`Code scanning alerts uploaded successfully. ID: ${response.data.id}`)
+          } catch (error: any) {
+            // If API upload fails, log the error but don't fail the action
+            core.warning(`Failed to upload SARIF via API: ${error.message}`)
+            core.info(`SARIF file generated at: ${sarifPath}`)
+            core.info(`You can manually upload it using: github/codeql-action/upload-sarif@v3`)
+          }
+        } else {
+          core.warning('results.json not found, skipping code scanning alerts generation')
+        }
+      } catch (error: any) {
+        core.error(`Error generating code scanning alerts: ${error.message}`)
+      }
     }
 
 
