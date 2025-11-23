@@ -22,6 +22,8 @@ interface Misconfiguration {
       Lines?: Array<{
         Number: number
         Content: string
+        Annotation?: string
+        Highlighted?: string
       }>
     }
     StartLine?: number
@@ -36,6 +38,9 @@ interface Misconfiguration {
   Type?: string
   PrimaryURL?: string
   Resolution?: string
+  Namespace?: string
+  Query?: string
+  References?: string[]
 }
 
 interface MisconfigurationResult {
@@ -80,15 +85,32 @@ export async function generateGitHubIssues(
 
     const octokit = github.getOctokit(token)
 
+    // Ensure Veracode severity labels exist with correct colors
+    await ensureVeracodeLabels(octokit, owner, repo, debug)
+
     // Track success and failures
     let successCount = 0
     let failureCount = 0
+    let skippedCount = 0
     const failures: string[] = []
+
+    // Get existing issues to check for duplicates
+    const existingIssues = await getExistingIssues(octokit, owner, repo, debug)
 
     // Create issues for each unique finding
     for (const [key, findings] of Object.entries(groupedFindings)) {
       const finding = findings[0] // Use first finding as representative
       const issueTitle = `[IaC] ${finding.title} - ${finding.file}`
+      
+      // Check for duplicate issues
+      if (isDuplicateIssue(existingIssues, finding.file, finding.title)) {
+        if (debug === "true") {
+          core.info(`Skipping duplicate issue: ${issueTitle}`)
+        }
+        skippedCount++
+        continue
+      }
+
       const issueBody = generateIssueBody(findings)
 
       if (debug === "true") {
@@ -96,12 +118,15 @@ export async function generateGitHubIssues(
       }
 
       try {
+        // Map severity to Veracode label
+        const veracodeSeverityLabel = getVeracodeSeverityLabel(finding.severity)
+        
         await octokit.rest.issues.create({
           owner,
           repo,
           title: issueTitle,
           body: issueBody,
-          labels: ['iac', 'security', finding.severity.toLowerCase()]
+          labels: ['iac', 'security', veracodeSeverityLabel, 'Veracode IaC Scanning']
         })
         core.info(`Created issue: ${issueTitle}`)
         successCount++
@@ -127,6 +152,7 @@ export async function generateGitHubIssues(
     core.info(`Total findings: ${policyRelevantFindings.length}`)
     core.info(`Unique issues attempted: ${Object.keys(groupedFindings).length}`)
     core.info(`Successfully created: ${successCount}`)
+    core.info(`Skipped (duplicates): ${skippedCount}`)
     core.info(`Failed: ${failureCount}`)
     
     if (failureCount > 0) {
@@ -145,6 +171,162 @@ export async function generateGitHubIssues(
   }
 }
 
+async function ensureVeracodeLabels(
+  octokit: ReturnType<typeof github.getOctokit>,
+  owner: string,
+  repo: string,
+  debug?: string
+): Promise<void> {
+  const veracodeLabels = [
+    { name: 'VeracodeFlaw: Very High', color: 'd92b85', description: 'A Veracode Flaw, Very High severity' },
+    { name: 'VeracodeFlaw: High', color: 'e61f25', description: 'A Veracode Flaw, High severity' },
+    { name: 'VeracodeFlaw: Medium', color: 'fd7333', description: 'A Veracode Flaw, Medium severity' },
+    { name: 'VeracodeFlaw: Low', color: 'ffcc33', description: 'A Veracode Flaw, Low severity' },
+    { name: 'VeracodeFlaw: Very Low', color: 'c9da2c', description: 'A Veracode Flaw, Very Low severity' },
+    { name: 'VeracodeFlaw: Informational', color: '8dbd3e', description: 'A Veracode Flaw, Informational severity' }
+  ]
+
+  for (const label of veracodeLabels) {
+    try {
+      // Try to get the label first
+      await octokit.rest.issues.getLabel({
+        owner,
+        repo,
+        name: label.name
+      })
+      
+      // If it exists, update it to ensure correct color
+      try {
+        await octokit.rest.issues.updateLabel({
+          owner,
+          repo,
+          name: label.name,
+          color: label.color,
+          description: label.description
+        })
+        if (debug === "true") {
+          core.info(`Updated label: ${label.name}`)
+        }
+      } catch (updateError: any) {
+        // If update fails, continue (might not have permission)
+        if (debug === "true") {
+          core.info(`Could not update label ${label.name}: ${updateError.message}`)
+        }
+      }
+    } catch (error: any) {
+      // Label doesn't exist, create it
+      try {
+        await octokit.rest.issues.createLabel({
+          owner,
+          repo,
+          name: label.name,
+          color: label.color,
+          description: label.description
+        })
+        if (debug === "true") {
+          core.info(`Created label: ${label.name}`)
+        }
+      } catch (createError: any) {
+        // If creation fails, log but don't fail the action
+        core.warning(`Could not create label ${label.name}: ${createError.message}`)
+      }
+    }
+  }
+}
+
+function getVeracodeSeverityLabel(severity: string): string {
+  // Map IaC severity levels to Veracode severity labels
+  switch (severity.toUpperCase()) {
+    case 'CRITICAL':
+      return 'VeracodeFlaw: Very High'
+    case 'HIGH':
+      return 'VeracodeFlaw: High'
+    case 'MEDIUM':
+      return 'VeracodeFlaw: Medium'
+    case 'LOW':
+      return 'VeracodeFlaw: Low'
+    default:
+      return 'VeracodeFlaw: Informational'
+  }
+}
+
+async function getExistingIssues(
+  octokit: ReturnType<typeof github.getOctokit>,
+  owner: string,
+  repo: string,
+  debug?: string
+): Promise<any[]> {
+  try {
+    const issues: any[] = []
+    const perPage = 100
+    
+    // Check both open and closed issues to avoid duplicates
+    for (const state of ['open', 'closed'] as const) {
+      let page = 1
+      
+      while (true) {
+        const response = await octokit.rest.issues.listForRepo({
+          owner,
+          repo,
+          state: state,
+          labels: 'Veracode IaC Scanning',
+          per_page: perPage,
+          page: page
+        })
+        
+        if (response.data.length === 0) {
+          break
+        }
+        
+        issues.push(...response.data)
+        
+        if (response.data.length < perPage) {
+          break
+        }
+        
+        page++
+      }
+    }
+    
+    if (debug === "true") {
+      core.info(`Found ${issues.length} existing issues with 'Veracode IaC Scanning' label (open and closed)`)
+    }
+    
+    return issues
+  } catch (error: any) {
+    core.warning(`Failed to fetch existing issues for deduplication: ${error.message}`)
+    return []
+  }
+}
+
+function isDuplicateIssue(existingIssues: any[], file: string, title: string): boolean {
+  const normalizedTitle = `[IaC] ${title} - ${file}`
+  
+  return existingIssues.some(issue => {
+    // Check if title matches exactly
+    if (issue.title === normalizedTitle) {
+      return true
+    }
+    
+    // Also check if it's the same file and title (case-insensitive)
+    const issueTitleLower = issue.title.toLowerCase()
+    const normalizedTitleLower = normalizedTitle.toLowerCase()
+    
+    if (issueTitleLower === normalizedTitleLower) {
+      return true
+    }
+    
+    // Check if the issue title contains the same file and title pattern
+    if (issueTitleLower.includes(`[iac]`) && 
+        issueTitleLower.includes(title.toLowerCase()) && 
+        issueTitleLower.includes(file.toLowerCase())) {
+      return true
+    }
+    
+    return false
+  })
+}
+
 interface PolicyRelevantFinding {
   file: string
   title: string
@@ -155,7 +337,18 @@ interface PolicyRelevantFinding {
   startLine?: number
   endLine?: number
   id?: string
+  avdid?: string
   primaryURL?: string
+  provider?: string
+  service?: string
+  namespace?: string
+  query?: string
+  references?: string[]
+  type?: string
+  codeLines?: Array<{
+    number: number
+    content: string
+  }>
 }
 
 function extractPolicyRelevantFindings(results: ResultsJson): PolicyRelevantFinding[] {
@@ -210,8 +403,19 @@ function extractPolicyRelevantFindings(results: ResultsJson): PolicyRelevantFind
             resolution: misconfig.Resolution,
             startLine: misconfig.CauseMetadata?.StartLine,
             endLine: misconfig.CauseMetadata?.EndLine,
-            id: misconfig.ID || misconfig.AVDID,
-            primaryURL: misconfig.PrimaryURL
+            id: misconfig.ID,
+            avdid: misconfig.AVDID,
+            primaryURL: misconfig.PrimaryURL,
+            provider: misconfig.CauseMetadata?.Provider,
+            service: misconfig.CauseMetadata?.Service,
+            namespace: misconfig.Namespace,
+            query: misconfig.Query,
+            references: misconfig.References,
+            type: misconfig.Type,
+            codeLines: misconfig.CauseMetadata?.Code?.Lines?.map(line => ({
+              number: line.Number,
+              content: line.Content
+            }))
           })
         } else {
           // If no exact match, create finding from policy failure
@@ -262,6 +466,22 @@ function generateIssueBody(findings: PolicyRelevantFinding[]): string {
     body += `**ID:** ${finding.id}\n\n`
   }
 
+  if (finding.avdid) {
+    body += `**AVD ID:** ${finding.avdid}\n\n`
+  }
+
+  if (finding.provider) {
+    body += `**Provider:** ${finding.provider}\n\n`
+  }
+
+  if (finding.service) {
+    body += `**Service:** ${finding.service}\n\n`
+  }
+
+  if (finding.type) {
+    body += `**Type:** ${finding.type}\n\n`
+  }
+
   if (finding.description) {
     body += `### Description\n\n${finding.description}\n\n`
   }
@@ -278,12 +498,37 @@ function generateIssueBody(findings: PolicyRelevantFinding[]): string {
     body += `\n\n`
   }
 
+  // Add code snippet if available
+  if (finding.codeLines && finding.codeLines.length > 0) {
+    body += `### Code Location\n\n\`\`\`\n`
+    finding.codeLines.forEach(line => {
+      body += `${line.number}: ${line.content}\n`
+    })
+    body += `\`\`\`\n\n`
+  }
+
   if (finding.resolution) {
     body += `### Resolution\n\n${finding.resolution}\n\n`
   }
 
+  if (finding.namespace) {
+    body += `**Namespace:** \`${finding.namespace}\`\n\n`
+  }
+
+  if (finding.query) {
+    body += `**Query:** \`${finding.query}\`\n\n`
+  }
+
   if (finding.primaryURL) {
-    body += `**Reference:** ${finding.primaryURL}\n\n`
+    body += `**Primary Reference:** ${finding.primaryURL}\n\n`
+  }
+
+  if (finding.references && finding.references.length > 0) {
+    body += `### Additional References\n\n`
+    finding.references.forEach(ref => {
+      body += `- ${ref}\n`
+    })
+    body += `\n`
   }
 
   if (findings.length > 1) {

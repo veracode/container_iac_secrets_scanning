@@ -51,8 +51,16 @@ When `issues: true` is set, the action will:
 - Parse the scan results to identify policy-relevant misconfigurations
 - Create GitHub issues for each unique finding (grouped by file and title to avoid duplicates)
 - Include detailed information such as severity, description, resolution steps, and file locations
-- Automatically label issues with `iac`, `security`, and the severity level
-- Provide a summary of created vs failed issues
+- Automatically create/update Veracode severity labels with the correct colors:
+  - `VeracodeFlaw: Very High` (CRITICAL) - Color: `d92b85`
+  - `VeracodeFlaw: High` (HIGH) - Color: `e61f25`
+  - `VeracodeFlaw: Medium` (MEDIUM) - Color: `fd7333`
+  - `VeracodeFlaw: Low` (LOW) - Color: `ffcc33`
+  - `VeracodeFlaw: Very Low` - Color: `c9da2c`
+  - `VeracodeFlaw: Informational` - Color: `8dbd3e`
+- Automatically label issues with `iac`, `security`, `Veracode IaC Scanning`, and the appropriate Veracode severity label
+- Check for duplicate issues before creating new ones (prevents regenerating the same issues)
+- Provide a summary of created, skipped (duplicates), and failed issues
 
 **Common Issues:**
 - "Resource not accessible by integration" - The token lacks `issues: write` permission or issues are disabled in repository settings

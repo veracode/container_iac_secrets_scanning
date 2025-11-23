@@ -100384,25 +100384,40 @@ function generateGitHubIssues(resultsJsonPath, token, owner, repo, debug) {
             // Group findings by file and title to avoid duplicate issues
             const groupedFindings = groupFindingsByFileAndTitle(policyRelevantFindings);
             const octokit = github.getOctokit(token);
+            // Ensure Veracode severity labels exist with correct colors
+            yield ensureVeracodeLabels(octokit, owner, repo, debug);
             // Track success and failures
             let successCount = 0;
             let failureCount = 0;
+            let skippedCount = 0;
             const failures = [];
+            // Get existing issues to check for duplicates
+            const existingIssues = yield getExistingIssues(octokit, owner, repo, debug);
             // Create issues for each unique finding
             for (const [key, findings] of Object.entries(groupedFindings)) {
                 const finding = findings[0]; // Use first finding as representative
                 const issueTitle = `[IaC] ${finding.title} - ${finding.file}`;
+                // Check for duplicate issues
+                if (isDuplicateIssue(existingIssues, finding.file, finding.title)) {
+                    if (debug === "true") {
+                        core.info(`Skipping duplicate issue: ${issueTitle}`);
+                    }
+                    skippedCount++;
+                    continue;
+                }
                 const issueBody = generateIssueBody(findings);
                 if (debug === "true") {
                     core.info(`Creating issue: ${issueTitle}`);
                 }
                 try {
+                    // Map severity to Veracode label
+                    const veracodeSeverityLabel = getVeracodeSeverityLabel(finding.severity);
                     yield octokit.rest.issues.create({
                         owner,
                         repo,
                         title: issueTitle,
                         body: issueBody,
-                        labels: ['iac', 'security', finding.severity.toLowerCase()]
+                        labels: ['iac', 'security', veracodeSeverityLabel, 'Veracode IaC Scanning']
                     });
                     core.info(`Created issue: ${issueTitle}`);
                     successCount++;
@@ -100429,6 +100444,7 @@ function generateGitHubIssues(resultsJsonPath, token, owner, repo, debug) {
             core.info(`Total findings: ${policyRelevantFindings.length}`);
             core.info(`Unique issues attempted: ${Object.keys(groupedFindings).length}`);
             core.info(`Successfully created: ${successCount}`);
+            core.info(`Skipped (duplicates): ${skippedCount}`);
             core.info(`Failed: ${failureCount}`);
             if (failureCount > 0) {
                 core.warning(`\nSome issues failed to create. Common causes:`);
@@ -100448,8 +100464,143 @@ function generateGitHubIssues(resultsJsonPath, token, owner, repo, debug) {
     });
 }
 exports.generateGitHubIssues = generateGitHubIssues;
+function ensureVeracodeLabels(octokit, owner, repo, debug) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const veracodeLabels = [
+            { name: 'VeracodeFlaw: Very High', color: 'd92b85', description: 'A Veracode Flaw, Very High severity' },
+            { name: 'VeracodeFlaw: High', color: 'e61f25', description: 'A Veracode Flaw, High severity' },
+            { name: 'VeracodeFlaw: Medium', color: 'fd7333', description: 'A Veracode Flaw, Medium severity' },
+            { name: 'VeracodeFlaw: Low', color: 'ffcc33', description: 'A Veracode Flaw, Low severity' },
+            { name: 'VeracodeFlaw: Very Low', color: 'c9da2c', description: 'A Veracode Flaw, Very Low severity' },
+            { name: 'VeracodeFlaw: Informational', color: '8dbd3e', description: 'A Veracode Flaw, Informational severity' }
+        ];
+        for (const label of veracodeLabels) {
+            try {
+                // Try to get the label first
+                yield octokit.rest.issues.getLabel({
+                    owner,
+                    repo,
+                    name: label.name
+                });
+                // If it exists, update it to ensure correct color
+                try {
+                    yield octokit.rest.issues.updateLabel({
+                        owner,
+                        repo,
+                        name: label.name,
+                        color: label.color,
+                        description: label.description
+                    });
+                    if (debug === "true") {
+                        core.info(`Updated label: ${label.name}`);
+                    }
+                }
+                catch (updateError) {
+                    // If update fails, continue (might not have permission)
+                    if (debug === "true") {
+                        core.info(`Could not update label ${label.name}: ${updateError.message}`);
+                    }
+                }
+            }
+            catch (error) {
+                // Label doesn't exist, create it
+                try {
+                    yield octokit.rest.issues.createLabel({
+                        owner,
+                        repo,
+                        name: label.name,
+                        color: label.color,
+                        description: label.description
+                    });
+                    if (debug === "true") {
+                        core.info(`Created label: ${label.name}`);
+                    }
+                }
+                catch (createError) {
+                    // If creation fails, log but don't fail the action
+                    core.warning(`Could not create label ${label.name}: ${createError.message}`);
+                }
+            }
+        }
+    });
+}
+function getVeracodeSeverityLabel(severity) {
+    // Map IaC severity levels to Veracode severity labels
+    switch (severity.toUpperCase()) {
+        case 'CRITICAL':
+            return 'VeracodeFlaw: Very High';
+        case 'HIGH':
+            return 'VeracodeFlaw: High';
+        case 'MEDIUM':
+            return 'VeracodeFlaw: Medium';
+        case 'LOW':
+            return 'VeracodeFlaw: Low';
+        default:
+            return 'VeracodeFlaw: Informational';
+    }
+}
+function getExistingIssues(octokit, owner, repo, debug) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const issues = [];
+            const perPage = 100;
+            // Check both open and closed issues to avoid duplicates
+            for (const state of ['open', 'closed']) {
+                let page = 1;
+                while (true) {
+                    const response = yield octokit.rest.issues.listForRepo({
+                        owner,
+                        repo,
+                        state: state,
+                        labels: 'Veracode IaC Scanning',
+                        per_page: perPage,
+                        page: page
+                    });
+                    if (response.data.length === 0) {
+                        break;
+                    }
+                    issues.push(...response.data);
+                    if (response.data.length < perPage) {
+                        break;
+                    }
+                    page++;
+                }
+            }
+            if (debug === "true") {
+                core.info(`Found ${issues.length} existing issues with 'Veracode IaC Scanning' label (open and closed)`);
+            }
+            return issues;
+        }
+        catch (error) {
+            core.warning(`Failed to fetch existing issues for deduplication: ${error.message}`);
+            return [];
+        }
+    });
+}
+function isDuplicateIssue(existingIssues, file, title) {
+    const normalizedTitle = `[IaC] ${title} - ${file}`;
+    return existingIssues.some(issue => {
+        // Check if title matches exactly
+        if (issue.title === normalizedTitle) {
+            return true;
+        }
+        // Also check if it's the same file and title (case-insensitive)
+        const issueTitleLower = issue.title.toLowerCase();
+        const normalizedTitleLower = normalizedTitle.toLowerCase();
+        if (issueTitleLower === normalizedTitleLower) {
+            return true;
+        }
+        // Check if the issue title contains the same file and title pattern
+        if (issueTitleLower.includes(`[iac]`) &&
+            issueTitleLower.includes(title.toLowerCase()) &&
+            issueTitleLower.includes(file.toLowerCase())) {
+            return true;
+        }
+        return false;
+    });
+}
 function extractPolicyRelevantFindings(results) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     const findings = [];
     // Get policy failures
     const policyFailures = ((_b = (_a = results["policy-results"]) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.failures) || [];
@@ -100494,8 +100645,19 @@ function extractPolicyRelevantFindings(results) {
                         resolution: misconfig.Resolution,
                         startLine: (_c = misconfig.CauseMetadata) === null || _c === void 0 ? void 0 : _c.StartLine,
                         endLine: (_d = misconfig.CauseMetadata) === null || _d === void 0 ? void 0 : _d.EndLine,
-                        id: misconfig.ID || misconfig.AVDID,
-                        primaryURL: misconfig.PrimaryURL
+                        id: misconfig.ID,
+                        avdid: misconfig.AVDID,
+                        primaryURL: misconfig.PrimaryURL,
+                        provider: (_e = misconfig.CauseMetadata) === null || _e === void 0 ? void 0 : _e.Provider,
+                        service: (_f = misconfig.CauseMetadata) === null || _f === void 0 ? void 0 : _f.Service,
+                        namespace: misconfig.Namespace,
+                        query: misconfig.Query,
+                        references: misconfig.References,
+                        type: misconfig.Type,
+                        codeLines: (_j = (_h = (_g = misconfig.CauseMetadata) === null || _g === void 0 ? void 0 : _g.Code) === null || _h === void 0 ? void 0 : _h.Lines) === null || _j === void 0 ? void 0 : _j.map(line => ({
+                            number: line.Number,
+                            content: line.Content
+                        }))
                     });
                 }
                 else {
@@ -100538,6 +100700,18 @@ function generateIssueBody(findings) {
     if (finding.id) {
         body += `**ID:** ${finding.id}\n\n`;
     }
+    if (finding.avdid) {
+        body += `**AVD ID:** ${finding.avdid}\n\n`;
+    }
+    if (finding.provider) {
+        body += `**Provider:** ${finding.provider}\n\n`;
+    }
+    if (finding.service) {
+        body += `**Service:** ${finding.service}\n\n`;
+    }
+    if (finding.type) {
+        body += `**Type:** ${finding.type}\n\n`;
+    }
     if (finding.description) {
         body += `### Description\n\n${finding.description}\n\n`;
     }
@@ -100551,11 +100725,32 @@ function generateIssueBody(findings) {
         }
         body += `\n\n`;
     }
+    // Add code snippet if available
+    if (finding.codeLines && finding.codeLines.length > 0) {
+        body += `### Code Location\n\n\`\`\`\n`;
+        finding.codeLines.forEach(line => {
+            body += `${line.number}: ${line.content}\n`;
+        });
+        body += `\`\`\`\n\n`;
+    }
     if (finding.resolution) {
         body += `### Resolution\n\n${finding.resolution}\n\n`;
     }
+    if (finding.namespace) {
+        body += `**Namespace:** \`${finding.namespace}\`\n\n`;
+    }
+    if (finding.query) {
+        body += `**Query:** \`${finding.query}\`\n\n`;
+    }
     if (finding.primaryURL) {
-        body += `**Reference:** ${finding.primaryURL}\n\n`;
+        body += `**Primary Reference:** ${finding.primaryURL}\n\n`;
+    }
+    if (finding.references && finding.references.length > 0) {
+        body += `### Additional References\n\n`;
+        finding.references.forEach(ref => {
+            body += `- ${ref}\n`;
+        });
+        body += `\n`;
     }
     if (findings.length > 1) {
         body += `\n---\n\n*This issue represents ${findings.length} similar findings.*\n`;
