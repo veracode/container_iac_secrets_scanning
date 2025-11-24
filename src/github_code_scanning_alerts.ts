@@ -79,7 +79,7 @@ export async function generateCodeScanningAlerts(
     const results: ResultsJson = JSON.parse(resultsContent)
 
     // Extract policy-relevant findings
-    const policyRelevantFindings = extractPolicyRelevantFindings(results)
+    const policyRelevantFindings = extractPolicyRelevantFindings(results, debug)
 
     if (policyRelevantFindings.length === 0) {
       core.info('No policy-relevant misconfigurations found')
@@ -103,79 +103,64 @@ export async function generateCodeScanningAlerts(
   }
 }
 
-function extractPolicyRelevantFindings(results: ResultsJson): PolicyRelevantFinding[] {
+function extractPolicyRelevantFindings(results: ResultsJson, debug?: string): PolicyRelevantFinding[] {
   const findings: PolicyRelevantFinding[] = []
-
-  // Get policy failures
-  const policyFailures = results["policy-results"]?.[0]?.failures || []
 
   // Get all misconfigurations - try both possible locations
   // The JSON structure uses "configs.Results" not "misconfigurations"
   const allMisconfigurations = results.configs?.Results || results.misconfigurations || []
-
-  // Create a map of file -> title -> misconfiguration for quick lookup
-  const misconfigMap = new Map<string, Map<string, Misconfiguration[]>>()
-
-  for (const misconfigResult of allMisconfigurations) {
-    const file = misconfigResult.Target
-    if (!misconfigMap.has(file)) {
-      misconfigMap.set(file, new Map())
-    }
-    const fileMap = misconfigMap.get(file)!
-
-    for (const misconfig of misconfigResult.Misconfigurations || []) {
-      const title = misconfig.Title || misconfig.ID || 'Unknown'
-      if (!fileMap.has(title)) {
-        fileMap.set(title, [])
-      }
-      fileMap.get(title)!.push(misconfig)
+  
+  if (debug === "true") {
+    core.info(`Found ${allMisconfigurations.length} misconfiguration result groups`)
+    if (results.configs?.Results) {
+      core.info(`Using configs.Results array`)
+    } else if (results.misconfigurations) {
+      core.info(`Using misconfigurations array`)
+    } else {
+      core.info(`No misconfigurations found in either location`)
     }
   }
 
-  // Parse policy failures and match with misconfigurations
-  for (const failure of policyFailures) {
-    // Policy failure format: "config.rego failed - Found {SEVERITY} issues in infrastructure as code: {file}: {title}"
-    const match = failure.msg.match(/Found (CRITICAL|HIGH|MEDIUM|LOW) issues in infrastructure as code: ([^:]+): (.+)/)
-    if (match) {
-      const severity = match[1]
-      const file = match[2].trim()
-      const title = match[3].trim()
+  // Simply iterate through all misconfigurations and extract those with Status: "FAIL"
+  // These are the policy-relevant findings (same approach as GitHub issues)
+  for (const misconfigResult of allMisconfigurations) {
+    const file = (misconfigResult.Target || '').trim()
+    
+    if (!file) {
+      continue
+    }
 
-      // Find matching misconfiguration
-      const fileMap = misconfigMap.get(file)
-      if (fileMap) {
-        const misconfigs = fileMap.get(title) || []
-        if (misconfigs.length > 0) {
-          const misconfig = misconfigs[0] // Use first match
-          findings.push({
-            file,
-            title,
-            severity,
-            description: misconfig.Description,
-            message: misconfig.Message,
-            resolution: misconfig.Resolution,
-            startLine: misconfig.CauseMetadata?.StartLine,
-            endLine: misconfig.CauseMetadata?.EndLine,
-            id: misconfig.ID || misconfig.AVDID,
-            primaryURL: misconfig.PrimaryURL
-          })
-        } else {
-          // If no exact match, create finding from policy failure
-          findings.push({
-            file,
-            title,
-            severity
-          })
-        }
-      } else {
-        // If file not found in misconfigurations, create finding from policy failure
-        findings.push({
-          file,
-          title,
-          severity
-        })
+    for (const misconfig of misconfigResult.Misconfigurations || []) {
+      // Only process FAIL status misconfigurations (policy-relevant)
+      if (misconfig.Status !== 'FAIL') {
+        continue
+      }
+
+      const title = (misconfig.Title || misconfig.ID || 'Unknown').trim()
+      const severity = misconfig.Severity || 'UNKNOWN'
+
+      // Extract all available information directly from the misconfiguration
+      findings.push({
+        file,
+        title,
+        severity,
+        description: misconfig.Description?.trim() || undefined,
+        message: misconfig.Message?.trim() || undefined,
+        resolution: misconfig.Resolution?.trim() || undefined,
+        startLine: misconfig.CauseMetadata?.StartLine,
+        endLine: misconfig.CauseMetadata?.EndLine,
+        id: misconfig.ID || undefined,
+        primaryURL: misconfig.PrimaryURL || undefined
+      })
+      
+      if (debug === "true") {
+        core.info(`Extracted finding: file="${file}", title="${title}", severity="${severity}"`)
       }
     }
+  }
+
+  if (debug === "true") {
+    core.info(`Extracted ${findings.length} policy-relevant findings (Status: FAIL)`)
   }
 
   return findings

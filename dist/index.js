@@ -101902,7 +101902,7 @@ function generateCodeScanningAlerts(resultsJsonPath, outputPath, debug) {
             const resultsContent = fs.readFileSync(resultsJsonPath, 'utf8');
             const results = JSON.parse(resultsContent);
             // Extract policy-relevant findings
-            const policyRelevantFindings = extractPolicyRelevantFindings(results);
+            const policyRelevantFindings = extractPolicyRelevantFindings(results, debug);
             if (policyRelevantFindings.length === 0) {
                 core.info('No policy-relevant misconfigurations found');
                 // Create empty SARIF file
@@ -101924,75 +101924,58 @@ function generateCodeScanningAlerts(resultsJsonPath, outputPath, debug) {
     });
 }
 exports.generateCodeScanningAlerts = generateCodeScanningAlerts;
-function extractPolicyRelevantFindings(results) {
-    var _a, _b, _c, _d, _e;
+function extractPolicyRelevantFindings(results, debug) {
+    var _a, _b, _c, _d, _e, _f, _g;
     const findings = [];
-    // Get policy failures
-    const policyFailures = ((_b = (_a = results["policy-results"]) === null || _a === void 0 ? void 0 : _a[0]) === null || _b === void 0 ? void 0 : _b.failures) || [];
     // Get all misconfigurations - try both possible locations
     // The JSON structure uses "configs.Results" not "misconfigurations"
-    const allMisconfigurations = ((_c = results.configs) === null || _c === void 0 ? void 0 : _c.Results) || results.misconfigurations || [];
-    // Create a map of file -> title -> misconfiguration for quick lookup
-    const misconfigMap = new Map();
-    for (const misconfigResult of allMisconfigurations) {
-        const file = misconfigResult.Target;
-        if (!misconfigMap.has(file)) {
-            misconfigMap.set(file, new Map());
+    const allMisconfigurations = ((_a = results.configs) === null || _a === void 0 ? void 0 : _a.Results) || results.misconfigurations || [];
+    if (debug === "true") {
+        core.info(`Found ${allMisconfigurations.length} misconfiguration result groups`);
+        if ((_b = results.configs) === null || _b === void 0 ? void 0 : _b.Results) {
+            core.info(`Using configs.Results array`);
         }
-        const fileMap = misconfigMap.get(file);
-        for (const misconfig of misconfigResult.Misconfigurations || []) {
-            const title = misconfig.Title || misconfig.ID || 'Unknown';
-            if (!fileMap.has(title)) {
-                fileMap.set(title, []);
-            }
-            fileMap.get(title).push(misconfig);
+        else if (results.misconfigurations) {
+            core.info(`Using misconfigurations array`);
+        }
+        else {
+            core.info(`No misconfigurations found in either location`);
         }
     }
-    // Parse policy failures and match with misconfigurations
-    for (const failure of policyFailures) {
-        // Policy failure format: "config.rego failed - Found {SEVERITY} issues in infrastructure as code: {file}: {title}"
-        const match = failure.msg.match(/Found (CRITICAL|HIGH|MEDIUM|LOW) issues in infrastructure as code: ([^:]+): (.+)/);
-        if (match) {
-            const severity = match[1];
-            const file = match[2].trim();
-            const title = match[3].trim();
-            // Find matching misconfiguration
-            const fileMap = misconfigMap.get(file);
-            if (fileMap) {
-                const misconfigs = fileMap.get(title) || [];
-                if (misconfigs.length > 0) {
-                    const misconfig = misconfigs[0]; // Use first match
-                    findings.push({
-                        file,
-                        title,
-                        severity,
-                        description: misconfig.Description,
-                        message: misconfig.Message,
-                        resolution: misconfig.Resolution,
-                        startLine: (_d = misconfig.CauseMetadata) === null || _d === void 0 ? void 0 : _d.StartLine,
-                        endLine: (_e = misconfig.CauseMetadata) === null || _e === void 0 ? void 0 : _e.EndLine,
-                        id: misconfig.ID || misconfig.AVDID,
-                        primaryURL: misconfig.PrimaryURL
-                    });
-                }
-                else {
-                    // If no exact match, create finding from policy failure
-                    findings.push({
-                        file,
-                        title,
-                        severity
-                    });
-                }
+    // Simply iterate through all misconfigurations and extract those with Status: "FAIL"
+    // These are the policy-relevant findings (same approach as GitHub issues)
+    for (const misconfigResult of allMisconfigurations) {
+        const file = (misconfigResult.Target || '').trim();
+        if (!file) {
+            continue;
+        }
+        for (const misconfig of misconfigResult.Misconfigurations || []) {
+            // Only process FAIL status misconfigurations (policy-relevant)
+            if (misconfig.Status !== 'FAIL') {
+                continue;
             }
-            else {
-                // If file not found in misconfigurations, create finding from policy failure
-                findings.push({
-                    file,
-                    title,
-                    severity
-                });
+            const title = (misconfig.Title || misconfig.ID || 'Unknown').trim();
+            const severity = misconfig.Severity || 'UNKNOWN';
+            // Extract all available information directly from the misconfiguration
+            findings.push({
+                file,
+                title,
+                severity,
+                description: ((_c = misconfig.Description) === null || _c === void 0 ? void 0 : _c.trim()) || undefined,
+                message: ((_d = misconfig.Message) === null || _d === void 0 ? void 0 : _d.trim()) || undefined,
+                resolution: ((_e = misconfig.Resolution) === null || _e === void 0 ? void 0 : _e.trim()) || undefined,
+                startLine: (_f = misconfig.CauseMetadata) === null || _f === void 0 ? void 0 : _f.StartLine,
+                endLine: (_g = misconfig.CauseMetadata) === null || _g === void 0 ? void 0 : _g.EndLine,
+                id: misconfig.ID || undefined,
+                primaryURL: misconfig.PrimaryURL || undefined
+            });
+            if (debug === "true") {
+                core.info(`Extracted finding: file="${file}", title="${title}", severity="${severity}"`);
             }
         }
+    }
+    if (debug === "true") {
+        core.info(`Extracted ${findings.length} policy-relevant findings (Status: FAIL)`);
     }
     return findings;
 }
@@ -102650,7 +102633,7 @@ function generateIssueBody(findings, debug) {
         const severityColor = getSeverityColor(finding.severity);
         const severityEmoji = getSeverityEmoji(finding.severity);
         // Try HTML first (may be stripped by GitHub)
-        body += `### [!IMPORTANT]\n\n`;
+        body += `[!IMPORTANT]\n\n`;
         // Fallback: Also add a text-based indicator that will always show
         // This ensures visibility even if GitHub strips the HTML styles
         body += `### Severity: ${severityEmoji} **${finding.severity}**\n\n`;
