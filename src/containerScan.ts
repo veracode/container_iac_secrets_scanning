@@ -5,11 +5,15 @@ import * as github from "@actions/github"
 import { execSync } from "child_process";
 import { env } from "process";
 import * as fs from 'fs';
+import * as zlib from 'zlib';
+import { promisify } from 'util';
 import { run_cli } from "./run_command";
 import { install_cli } from "./install_cli";
 import { store_artifacts } from "./store_artifacts";
 import { generateGitHubIssues } from "./github_issues";
 import { generateCodeScanningAlerts } from "./github_code_scanning_alerts";
+
+const gzip = promisify(zlib.gzip);
 
 export async function ContainerScan(parameters:any) {
 
@@ -271,8 +275,18 @@ export async function ContainerScan(parameters:any) {
           core.setOutput('sarif_file', sarifPath)
           
           try {
+            // GitHub Code Scanning API requires SARIF to be gzipped and then Base64 encoded
             const sarifContent = fs.readFileSync(sarifPath, 'utf8')
-            const sarifBase64 = Buffer.from(sarifContent).toString('base64')
+            
+            // Step 1: Gzip the SARIF content
+            const gzippedSarif = await gzip(sarifContent)
+            
+            // Step 2: Base64 encode the gzipped content
+            const sarifBase64 = gzippedSarif.toString('base64')
+            
+            if (parameters.debug === "true") {
+              core.info(`SARIF file size: ${sarifContent.length} bytes (original), ${gzippedSarif.length} bytes (gzipped)`)
+            }
             
             const response = await octokit.request('POST /repos/{owner}/{repo}/code-scanning/sarifs', {
               owner,

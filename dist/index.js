@@ -101559,11 +101559,14 @@ const core = __importStar(__nccwpck_require__(2831));
 const github = __importStar(__nccwpck_require__(5371));
 const process_1 = __nccwpck_require__(932);
 const fs = __importStar(__nccwpck_require__(9896));
+const zlib = __importStar(__nccwpck_require__(3106));
+const util_1 = __nccwpck_require__(9023);
 const run_command_1 = __nccwpck_require__(8605);
 const install_cli_1 = __nccwpck_require__(1016);
 const store_artifacts_1 = __nccwpck_require__(2739);
 const github_issues_1 = __nccwpck_require__(1910);
 const github_code_scanning_alerts_1 = __nccwpck_require__(1635);
+const gzip = (0, util_1.promisify)(zlib.gzip);
 function ContainerScan(parameters) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
@@ -101778,8 +101781,15 @@ function ContainerScan(parameters) {
                         // Set output for the SARIF file path regardless of upload success
                         core.setOutput('sarif_file', sarifPath);
                         try {
+                            // GitHub Code Scanning API requires SARIF to be gzipped and then Base64 encoded
                             const sarifContent = fs.readFileSync(sarifPath, 'utf8');
-                            const sarifBase64 = Buffer.from(sarifContent).toString('base64');
+                            // Step 1: Gzip the SARIF content
+                            const gzippedSarif = yield gzip(sarifContent);
+                            // Step 2: Base64 encode the gzipped content
+                            const sarifBase64 = gzippedSarif.toString('base64');
+                            if (parameters.debug === "true") {
+                                core.info(`SARIF file size: ${sarifContent.length} bytes (original), ${gzippedSarif.length} bytes (gzipped)`);
+                            }
                             const response = yield octokit.request('POST /repos/{owner}/{repo}/code-scanning/sarifs', {
                                 owner,
                                 repo,
