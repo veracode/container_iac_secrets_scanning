@@ -35,6 +35,9 @@ interface Misconfiguration {
   Type?: string
   PrimaryURL?: string
   Resolution?: string
+  Namespace?: string
+  Query?: string
+  References?: string[]
 }
 
 interface MisconfigurationResult {
@@ -61,7 +64,14 @@ interface PolicyRelevantFinding {
   startLine?: number
   endLine?: number
   id?: string
+  avdid?: string
   primaryURL?: string
+  provider?: string
+  service?: string
+  namespace?: string
+  query?: string
+  references?: string[]
+  type?: string
 }
 
 export async function generateCodeScanningAlerts(
@@ -150,7 +160,16 @@ function extractPolicyRelevantFindings(results: ResultsJson, debug?: string): Po
         startLine: misconfig.CauseMetadata?.StartLine,
         endLine: misconfig.CauseMetadata?.EndLine,
         id: misconfig.ID || undefined,
-        primaryURL: misconfig.PrimaryURL || undefined
+        avdid: misconfig.AVDID || undefined,
+        primaryURL: misconfig.PrimaryURL || undefined,
+        provider: misconfig.CauseMetadata?.Provider || undefined,
+        service: misconfig.CauseMetadata?.Service || undefined,
+        namespace: misconfig.Namespace || undefined,
+        query: misconfig.Query || undefined,
+        references: misconfig.References && misconfig.References.length > 0 
+          ? misconfig.References 
+          : undefined,
+        type: misconfig.Type || undefined
       })
       
       if (debug === "true") {
@@ -190,9 +209,68 @@ function generateSarif(findings: PolicyRelevantFinding[]): any {
   const artifactsMap = new Map<string, any>()
 
   for (const finding of findings) {
-    // Create rule if not exists
-    const ruleId = finding.id || finding.title
+    // Create rule if not exists - use AVDID if available, otherwise ID or title
+    const ruleId = finding.avdid || finding.id || finding.title
     if (!rulesMap.has(ruleId)) {
+      // Build comprehensive rule description with all available information
+      let fullDescription = finding.description || finding.title
+      let helpText = ''
+      
+      if (finding.message) {
+        helpText += `**Message:** ${finding.message}\n\n`
+      }
+      
+      if (finding.description) {
+        helpText += `**Description:** ${finding.description}\n\n`
+      }
+      
+      if (finding.resolution) {
+        helpText += `**Resolution:** ${finding.resolution}\n\n`
+      }
+      
+      // Add metadata
+      const metadata: string[] = []
+      if (finding.type) {
+        metadata.push(`**Type:** ${finding.type}`)
+      }
+      if (finding.namespace) {
+        metadata.push(`**Namespace:** \`${finding.namespace}\``)
+      }
+      if (finding.service) {
+        metadata.push(`**Service:** ${finding.service}`)
+      }
+      if (finding.provider) {
+        metadata.push(`**Provider:** ${finding.provider}`)
+      }
+      if (finding.query) {
+        metadata.push(`**Query:** \`${finding.query}\``)
+      }
+      if (finding.avdid) {
+        metadata.push(`**AVD ID:** \`${finding.avdid}\``)
+      }
+      if (finding.id && finding.id !== finding.avdid) {
+        metadata.push(`**ID:** \`${finding.id}\``)
+      }
+      
+      if (metadata.length > 0) {
+        helpText += `\n**Metadata:**\n${metadata.join('\n')}\n\n`
+      }
+      
+      // Add references
+      if (finding.primaryURL || (finding.references && finding.references.length > 0)) {
+        helpText += `**References:**\n`
+        if (finding.primaryURL) {
+          helpText += `- ${finding.primaryURL}\n`
+        }
+        if (finding.references) {
+          finding.references.forEach(ref => {
+            if (ref !== finding.primaryURL) {
+              helpText += `- ${ref}\n`
+            }
+          })
+        }
+      }
+      
       const rule: any = {
         id: ruleId,
         name: finding.title,
@@ -200,7 +278,7 @@ function generateSarif(findings: PolicyRelevantFinding[]): any {
           text: finding.title
         },
         fullDescription: {
-          text: finding.description || finding.title
+          text: fullDescription
         },
         defaultConfiguration: {
           level: mapSeverityToLevel(finding.severity)
@@ -208,10 +286,36 @@ function generateSarif(findings: PolicyRelevantFinding[]): any {
         helpUri: finding.primaryURL || undefined
       }
 
-      if (finding.resolution) {
+      // Add comprehensive help text
+      if (helpText) {
+        rule.help = {
+          text: helpText.trim()
+        }
+      } else if (finding.resolution) {
         rule.help = {
           text: finding.resolution
         }
+      }
+      
+      // Add properties for additional metadata
+      rule.properties = {
+        severity: finding.severity
+      }
+      
+      if (finding.type) {
+        rule.properties.type = finding.type
+      }
+      if (finding.namespace) {
+        rule.properties.namespace = finding.namespace
+      }
+      if (finding.provider) {
+        rule.properties.provider = finding.provider
+      }
+      if (finding.service) {
+        rule.properties.service = finding.service
+      }
+      if (finding.avdid) {
+        rule.properties.avdid = finding.avdid
       }
 
       rulesMap.set(ruleId, rule)
@@ -226,11 +330,16 @@ function generateSarif(findings: PolicyRelevantFinding[]): any {
       })
     }
 
-    // Create result
+    // Create result with comprehensive message
+    let messageText = finding.message || finding.title
+    if (finding.description) {
+      messageText += `\n\n${finding.description}`
+    }
+    
     const result: any = {
       ruleId: ruleId,
       message: {
-        text: finding.message || finding.title
+        text: messageText
       },
       level: mapSeverityToLevel(finding.severity),
       locations: [
@@ -245,11 +354,39 @@ function generateSarif(findings: PolicyRelevantFinding[]): any {
             }
           }
         }
-      ]
+      ],
+      properties: {
+        severity: finding.severity
+      }
     }
-
-    if (finding.description) {
-      result.message.text = `${finding.message || finding.title}\n\n${finding.description}`
+    
+    // Add additional properties
+    if (finding.type) {
+      result.properties.type = finding.type
+    }
+    if (finding.namespace) {
+      result.properties.namespace = finding.namespace
+    }
+    if (finding.provider) {
+      result.properties.provider = finding.provider
+    }
+    if (finding.service) {
+      result.properties.service = finding.service
+    }
+    if (finding.query) {
+      result.properties.query = finding.query
+    }
+    if (finding.avdid) {
+      result.properties.avdid = finding.avdid
+    }
+    if (finding.id) {
+      result.properties.id = finding.id
+    }
+    if (finding.primaryURL) {
+      result.properties.primaryURL = finding.primaryURL
+    }
+    if (finding.references && finding.references.length > 0) {
+      result.properties.references = finding.references
     }
 
     sarif.runs[0].results.push(result)
