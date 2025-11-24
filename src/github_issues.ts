@@ -104,8 +104,12 @@ export async function generateGitHubIssues(
     // Get existing issues to check for duplicates
     const existingIssues = await getExistingIssues(octokit, owner, repo, debug)
 
-    // Create issues for each unique finding
+    // Create issues for each unique finding with throttling to avoid rate limits
+    const totalIssues = Object.keys(groupedFindings).length
+    let currentIssue = 0
+    
     for (const [key, findings] of Object.entries(groupedFindings)) {
+      currentIssue++
       const finding = findings[0] // Use first finding as representative
       
       // Determine issue title - if same AVDID in multiple files, consolidate
@@ -130,7 +134,7 @@ export async function generateGitHubIssues(
       const issueBody = await generateIssueBody(findings, debug)
 
       if (debug === "true") {
-        core.info(`\n=== Creating issue: ${issueTitle} ===`)
+        core.info(`\n=== Creating issue ${currentIssue}/${totalIssues}: ${issueTitle} ===`)
         core.info(`Finding data available:`)
         core.info(`  - description: ${finding.description ? `YES (${finding.description.length} chars)` : 'NO'}`)
         core.info(`  - message: ${finding.message ? `YES (${finding.message.length} chars)` : 'NO'}`)
@@ -165,21 +169,39 @@ export async function generateGitHubIssues(
           body: issueBody,
           labels: ['iac', 'security', veracodeSeverityLabel, 'Veracode IaC Scanning']
         })
-        core.info(`Created issue: ${issueTitle}`)
+        core.info(`Created issue: ${issueTitle} (${currentIssue}/${totalIssues})`)
         successCount++
+        
+        // Throttle: Add delay between requests to avoid rate limits
+        // GitHub allows 5000 requests/hour for authenticated requests
+        // With 200ms delay, we can create ~18,000 issues/hour (well under limit)
+        // But being conservative with 300ms delay
+        if (currentIssue < totalIssues) {
+          await new Promise(resolve => setTimeout(resolve, 300))
+        }
       } catch (error: any) {
         failureCount++
         const errorMsg = error.message || 'Unknown error'
         failures.push(`${key}: ${errorMsg}`)
         
-        // Provide specific guidance for common errors
-        if (errorMsg.includes('Resource not accessible by integration')) {
+        // Check for rate limit errors
+        if (error.status === 403 && (errorMsg.includes('rate limit') || errorMsg.includes('API rate limit'))) {
+          core.warning(`Rate limit hit! Waiting 60 seconds before continuing...`)
+          core.warning(`Failed to create issue for ${key}: ${errorMsg}`)
+          // Wait 60 seconds if we hit rate limit
+          await new Promise(resolve => setTimeout(resolve, 60000))
+        } else if (errorMsg.includes('Resource not accessible by integration')) {
           core.warning(`Failed to create issue for ${key}: ${errorMsg}`)
           core.warning(`This usually means the GitHub token lacks 'issues: write' permission or issues are disabled in the repository.`)
         } else if (errorMsg.includes('Not Found')) {
           core.warning(`Failed to create issue for ${key}: Repository not found or access denied`)
         } else {
           core.warning(`Failed to create issue for ${key}: ${errorMsg}`)
+        }
+        
+        // Still add a small delay even on errors to avoid compounding rate limit issues
+        if (currentIssue < totalIssues) {
+          await new Promise(resolve => setTimeout(resolve, 300))
         }
       }
     }
