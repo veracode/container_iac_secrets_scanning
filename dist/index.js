@@ -101756,6 +101756,25 @@ function ContainerScan(parameters) {
                             repo = repoParts[1];
                         }
                         // Upload SARIF using GitHub Code Scanning API
+                        // Determine commit SHA: use parameter if provided, otherwise fall back to context
+                        const commitSha = parameters.commit_sha || context.sha;
+                        // Use context.ref if available, otherwise construct from branch or default to main
+                        let ref = context.ref;
+                        if (!ref) {
+                            // Try to get from GITHUB_REF environment variable
+                            ref = process.env.GITHUB_REF || 'refs/heads/main';
+                        }
+                        if (!commitSha) {
+                            core.warning('No commit SHA available for SARIF upload. Please provide commit_sha parameter or ensure workflow has access to commit context.');
+                            core.info(`SARIF file generated at: ${sarifPath}`);
+                            core.info(`The SARIF file path is available via the 'sarif_file' output.`);
+                            core.setOutput('sarif_file', sarifPath);
+                            return;
+                        }
+                        if (parameters.debug === "true") {
+                            core.info(`Using commit SHA: ${commitSha}`);
+                            core.info(`Using ref: ${ref}`);
+                        }
                         // Set output for the SARIF file path regardless of upload success
                         core.setOutput('sarif_file', sarifPath);
                         try {
@@ -101764,8 +101783,8 @@ function ContainerScan(parameters) {
                             const response = yield octokit.request('POST /repos/{owner}/{repo}/code-scanning/sarifs', {
                                 owner,
                                 repo,
-                                commit_sha: context.sha,
-                                ref: context.ref,
+                                commit_sha: commitSha,
+                                ref: ref,
                                 sarif: sarifBase64,
                                 tool_name: 'veracode-iac-scanning'
                             });
@@ -101782,8 +101801,10 @@ function ContainerScan(parameters) {
                                 core.warning(`  security-events: write`);
                                 core.warning(`  contents: read`);
                             }
-                            else if (errorMsg.includes('Not Found')) {
-                                core.warning(`Repository not found or access denied.`);
+                            else if (errorMsg.includes('Not Found') || errorMsg.includes('commit not found')) {
+                                core.warning(`Repository not found, access denied, or commit not found.`);
+                                core.warning(`Commit SHA used: ${commitSha}`);
+                                core.warning(`If the commit is not found, try providing the commit_sha parameter explicitly.`);
                             }
                             core.info(`\nSARIF file generated at: ${sarifPath}`);
                             core.info(`The SARIF file path is available via the 'sarif_file' output.`);
@@ -102934,6 +102955,7 @@ const issues = core.getInput("issues", { required: false });
 const codeScanningAlerts = core.getInput("codeScanningAlerts", { required: false });
 const github_owner = core.getInput("github_owner", { required: false });
 const github_repository = core.getInput("github_repository", { required: false });
+const commit_sha = core.getInput("commit_sha", { required: false });
 core.info('check if we run on a pull request');
 let pullRequest = process.env.GITHUB_REF;
 if (debug == "true") {
@@ -102978,7 +103000,8 @@ const parameters = {
     issues: issues,
     codeScanningAlerts: codeScanningAlerts,
     github_owner: github_owner,
-    github_repository: github_repository
+    github_repository: github_repository,
+    commit_sha: commit_sha
 };
 (0, containerScan_1.ContainerScan)(parameters);
 

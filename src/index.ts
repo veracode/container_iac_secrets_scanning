@@ -20,6 +20,7 @@ const issues = core.getInput("issues", {required:false})
 const codeScanningAlerts = core.getInput("codeScanningAlerts", {required:false})
 const github_owner = core.getInput("github_owner", {required:false})
 const github_repository = core.getInput("github_repository", {required:false})
+const commit_sha = core.getInput("commit_sha", {required:false})
 
 core.info('check if we run on a pull request')
 let pullRequest:any = process.env.GITHUB_REF
@@ -69,7 +70,8 @@ const parameters = {
     issues: issues,
     codeScanningAlerts: codeScanningAlerts,
     github_owner: github_owner,
-    github_repository: github_repository
+    github_repository: github_repository,
+    commit_sha: commit_sha
 }
 
 ContainerScan(parameters)

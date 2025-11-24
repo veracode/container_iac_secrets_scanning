@@ -1,4 +1,4 @@
-name: 'Veracode Container/IaC/Secrets Scanning GitHub Action'
+this name: 'Veracode Container/IaC/Secrets Scanning GitHub Action'
 description: 'Veracode Container/IaC/Secrets Scanning GitHub Action'
 author: 'Veracode'
 
@@ -58,6 +58,9 @@ inputs:
     required: false
   github_repository:
     description: 'GitHub repository name (defaults to the repository where the action is running)'
+    required: false
+  commit_sha:
+    description: 'Commit SHA for SARIF upload (defaults to the commit from the workflow run context)'
     required: false
 runs:
   using: 'node20'
