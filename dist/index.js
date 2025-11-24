@@ -102630,10 +102630,10 @@ function generateIssueBody(findings, debug) {
         const severityColor = getSeverityColor(finding.severity);
         const severityEmoji = getSeverityEmoji(finding.severity);
         // Try HTML first (may be stripped by GitHub)
-        body += `<div style="background-color: #${severityColor}; color: #000000; padding: 8px 12px; border-radius: 4px; font-weight: bold; display: inline-block; margin-bottom: 16px;">Severity: ${finding.severity}</div>\n\n`;
+        body += `###[!IMPORTANT]\n\n`;
         // Fallback: Also add a text-based indicator that will always show
         // This ensures visibility even if GitHub strips the HTML styles
-        body += `**Severity:** ${severityEmoji} **${finding.severity}**\n\n`;
+        body += `###Severity: ${severityEmoji} **${finding.severity}**\n\n`;
         // File Information - Always show with line numbers from JSON
         const uniqueFiles = [...new Set(findings.map(f => f.file))];
         if (uniqueFiles.length === 1) {
