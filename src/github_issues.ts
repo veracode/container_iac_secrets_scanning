@@ -644,11 +644,11 @@ async function generateIssueBody(findings: PolicyRelevantFinding[], debug?: stri
   const severityEmoji = getSeverityEmoji(finding.severity)
   
   // Try HTML first (may be stripped by GitHub)
-  body += `###[!IMPORTANT]\n\n`
+  body += `### [!IMPORTANT]\n\n`
   
   // Fallback: Also add a text-based indicator that will always show
   // This ensures visibility even if GitHub strips the HTML styles
-  body += `###Severity: ${severityEmoji} **${finding.severity}**\n\n`
+  body += `### Severity: ${severityEmoji} **${finding.severity}**\n\n`
   
   // File Information - Always show with line numbers from JSON
   const uniqueFiles = [...new Set(findings.map(f => f.file))]
