@@ -102237,22 +102237,27 @@ function generateGitHubIssues(resultsJsonPath, token, owner, repo, debug) {
                     successCount++;
                     // Throttle: Add delay between requests to avoid rate limits
                     // GitHub allows 5000 requests/hour for authenticated requests
-                    // With 200ms delay, we can create ~18,000 issues/hour (well under limit)
-                    // But being conservative with 300ms delay
+                    // Secondary rate limits are stricter and can trigger with rapid requests
+                    // Using 1000ms (1 second) delay to be more conservative and avoid secondary rate limits
                     if (currentIssue < totalIssues) {
-                        yield new Promise(resolve => setTimeout(resolve, 300));
+                        yield new Promise(resolve => setTimeout(resolve, 1000));
                     }
                 }
                 catch (error) {
                     failureCount++;
                     const errorMsg = error.message || 'Unknown error';
                     failures.push(`${key}: ${errorMsg}`);
-                    // Check for rate limit errors
-                    if (error.status === 403 && (errorMsg.includes('rate limit') || errorMsg.includes('API rate limit'))) {
-                        core.warning(`Rate limit hit! Waiting 60 seconds before continuing...`);
+                    // Check for rate limit errors (primary and secondary)
+                    const isRateLimit = error.status === 403 && (errorMsg.includes('rate limit') ||
+                        errorMsg.includes('API rate limit') ||
+                        errorMsg.includes('secondary rate limit') ||
+                        errorMsg.includes('temporarily blocked'));
+                    if (isRateLimit) {
+                        // Secondary rate limits require longer waits (often 60+ seconds)
+                        const waitTime = errorMsg.includes('secondary rate limit') ? 120000 : 60000; // 2 min for secondary, 1 min for primary
+                        core.warning(`Rate limit hit! Waiting ${waitTime / 1000} seconds before continuing...`);
                         core.warning(`Failed to create issue for ${key}: ${errorMsg}`);
-                        // Wait 60 seconds if we hit rate limit
-                        yield new Promise(resolve => setTimeout(resolve, 60000));
+                        yield new Promise(resolve => setTimeout(resolve, waitTime));
                     }
                     else if (errorMsg.includes('Resource not accessible by integration')) {
                         core.warning(`Failed to create issue for ${key}: ${errorMsg}`);
@@ -102264,9 +102269,10 @@ function generateGitHubIssues(resultsJsonPath, token, owner, repo, debug) {
                     else {
                         core.warning(`Failed to create issue for ${key}: ${errorMsg}`);
                     }
-                    // Still add a small delay even on errors to avoid compounding rate limit issues
+                    // Still add a delay even on errors to avoid compounding rate limit issues
+                    // Use longer delay on errors to be more conservative
                     if (currentIssue < totalIssues) {
-                        yield new Promise(resolve => setTimeout(resolve, 300));
+                        yield new Promise(resolve => setTimeout(resolve, 2000)); // 2 seconds on errors
                     }
                 }
             }
@@ -102632,8 +102638,6 @@ function generateIssueBody(findings, debug) {
         // are often stripped. We'll try HTML but GitHub may not render the color.
         const severityColor = getSeverityColor(finding.severity);
         const severityEmoji = getSeverityEmoji(finding.severity);
-        // Try HTML first (may be stripped by GitHub)
-        body += `[!IMPORTANT]\n\n`;
         // Fallback: Also add a text-based indicator that will always show
         // This ensures visibility even if GitHub strips the HTML styles
         body += `### Severity: ${severityEmoji} **${finding.severity}**\n\n`;
