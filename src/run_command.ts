@@ -9,9 +9,10 @@ export async function run_cli(command: string, debug: any, resultsfile: any, fai
         const appdata = process.env.APPDATA ?? "";
         const cliPathVera = path.join(appdata, 'veracode')
         const cliPath = path.join(cliPathVera, 'veracode.exe');
+        core.info(`CLI Path:${cliPath}, Command:${command} `)
         try {
             let curlCommandOutput = execSync(
-                `powershell "${cliPath} ${command}"`,
+                `${cliPath} ${command}`,
                 { stdio: 'inherit' }
             );
 
