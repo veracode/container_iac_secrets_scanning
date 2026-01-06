@@ -102034,16 +102034,35 @@ function run_cli(command, debug, resultsfile, failBuildOnError) {
             const cliPath = path_1.default.join(cliPathVera, 'veracode.exe');
             core.info(`CLI Path:${cliPath}, Command:${command} `);
             try {
-                let curlCommandOutput = (0, child_process_1.execSync)(`${cliPath} ${command}`, { stdio: 'inherit' });
+                let curlCommandOutput = (0, child_process_1.execSync)(`${cliPath} ${command}`, { encoding: 'utf8', stdio: ['inherit', 'pipe', 'inherit'] });
                 if (debug == "true") {
                     core.info('#### DEBUG START ####');
                     core.info('run_command.ts - command output');
                     core.info('command output : ' + curlCommandOutput);
                     core.info('#### DEBUG END ####');
                 }
-                //core.info(`${curlCommandOutput}`)
+                // Output the results to console
+                if (curlCommandOutput) {
+                    core.info(curlCommandOutput);
+                }
             }
             catch (error) {
+                // Exit code 3 with standard output means policy violations found (normal completion)
+                // This is not a failBuildOnError situation - policy evaluation will handle the decision
+                const stdout = error.stdout ? (Buffer.isBuffer(error.stdout) ? error.stdout.toString('utf8') : error.stdout) : '';
+                if (error.status === 3 && stdout && stdout.trim().length > 0) {
+                    if (debug == "true") {
+                        core.info('#### DEBUG START ####');
+                        core.info('run_command.ts - Exit code 3 with output (policy violations found)');
+                        core.info('This is normal - policy evaluation will determine if workflow should fail');
+                        core.info('#### DEBUG END ####');
+                    }
+                    // Output the results
+                    core.info(stdout);
+                    // Don't treat this as an error - return normally
+                    return;
+                }
+                // For other exit codes or exit code 3 without output, treat as error
                 const failureMessage = `Veracode CLI scan failed. Exit code: ${error.status}, Command: ${command}`;
                 const failBuildOnErrorBool = String(failBuildOnError).toLowerCase() === "true";
                 if (failBuildOnErrorBool) {
@@ -102060,16 +102079,34 @@ function run_cli(command, debug, resultsfile, failBuildOnError) {
             core.info('Scan command :' + scanCommand);
             //let scanCommand = `curl -fsS https://tools.veracode.com/veracode-cli/install | sh && ./veracode ${command} `
             try {
-                let curlCommandOutput = (0, child_process_1.execSync)(scanCommand);
+                let curlCommandOutput = (0, child_process_1.execSync)(scanCommand, { encoding: 'utf8', stdio: ['inherit', 'pipe', 'inherit'] });
                 if (debug == "true") {
                     core.info('#### DEBUG START ####');
                     core.info('run_command.ts - command output');
                     core.info('command output : ' + curlCommandOutput);
                     core.info('#### DEBUG END ####');
                 }
-                core.info(`${curlCommandOutput}`);
+                if (curlCommandOutput) {
+                    core.info(curlCommandOutput);
+                }
             }
             catch (error) {
+                // Exit code 3 with standard output means policy violations found (normal completion)
+                // This is not a failBuildOnError situation - policy evaluation will handle the decision
+                const stdout = error.stdout ? (Buffer.isBuffer(error.stdout) ? error.stdout.toString('utf8') : error.stdout) : '';
+                if (error.status === 3 && stdout && stdout.trim().length > 0) {
+                    if (debug == "true") {
+                        core.info('#### DEBUG START ####');
+                        core.info('run_command.ts - Exit code 3 with output (policy violations found)');
+                        core.info('This is normal - policy evaluation will determine if workflow should fail');
+                        core.info('#### DEBUG END ####');
+                    }
+                    // Output the results
+                    core.info(stdout);
+                    // Don't treat this as an error - return normally
+                    return;
+                }
+                // For other exit codes or exit code 3 without output, treat as error
                 const failureMessage = `Veracode CLI scan failed. Exit code: ${error.status}, Command: ${scanCommand}`;
                 const failBuildOnErrorBool = String(failBuildOnError).toLowerCase() === "true";
                 if (failBuildOnErrorBool) {
