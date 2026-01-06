@@ -45,10 +45,9 @@ inputs:
     description: 'Specifies the platform environment type — use CLOUD for GitHub.com or ENTERPRISE for GitHub Enterprise Server (GHES).'
     default: 'CLOUD'
     required: false
-  generate_sbom_output:
-      description: 'Generate SBOM files as part of the scan'
-      default: 'true'
-      required: false
+  policy:
+    description: 'Policy name from Veracode platform to use for policy evaluation. The policy name will be URL encoded automatically (e.g., %26 for &, %2F for /).'
+    required: false
 runs:
   using: 'node20'
   main: 'dist/index.js'
