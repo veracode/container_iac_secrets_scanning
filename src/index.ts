@@ -16,6 +16,7 @@ const debug = core.getInput("debug", {required:false})
 const fail_build = core.getInput("fail_build", {required:false})
 const fail_build_on_error= core.getInput("fail_build_on_error", {required:false})
 const platformType = core.getInput("platformType", {required:false})
+const generate_sbom_output = core.getInput("generate_sbom_output", {required:false})
 
 core.info('check if we run on a pull request')
 let pullRequest:any = process.env.GITHUB_REF
@@ -61,7 +62,8 @@ const parameters = {
     isPR: isPR,
     pr_commentID: pr_commentID,
     fail_build_on_error:fail_build_on_error,
-    platformType
+    platformType,
+    generate_sbom_output
 }
 
 ContainerScan(parameters)
