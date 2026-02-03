@@ -99801,8 +99801,6 @@ function ContainerScan(parameters) {
             else {
                 commands.push((0, run_command_1.run_cli)(scanTextCommand, parameters.debug, 'results.txt', parameters.fail_build_on_error));
             }
-            console.log("parameters.generate_sbom_output : ");
-            console.log(parameters.generate_sbom_output);
             if (parameters.generate_sbom_output !== 'false') {
                 commands.push(...buildSbomCommands());
             }
@@ -99820,6 +99818,7 @@ function ContainerScan(parameters) {
                 'results.txt',
                 ...(parameters.generate_sbom_output ? sbomConfigs.map(c => c.file) : [])
             ].filter((file) => !!file);
+            console.log("files: ", files);
             yield (0, store_artifacts_1.store_artifacts)(files, parameters.debug, parameters.platformType);
             //Start here for results outpout
             let results = "";

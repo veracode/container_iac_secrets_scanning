@@ -59,9 +59,6 @@ export async function ContainerScan(parameters:any) {
       commands.push(run_cli(scanTextCommand, parameters.debug, 'results.txt', parameters.fail_build_on_error));
     }
 
-    console.log("parameters.generate_sbom_output : ");
-    console.log(parameters.generate_sbom_output);
-
     if (parameters.generate_sbom_output !== 'false') {
       commands.push(...buildSbomCommands());
     }
@@ -80,7 +77,7 @@ export async function ContainerScan(parameters:any) {
       'results.txt',
       ...(parameters.generate_sbom_output ? sbomConfigs.map(c => c.file) : [])
     ].filter((file): file is string => !!file);
-
+    console.log("files: ", files);
     await store_artifacts(files, parameters.debug, parameters.platformType);
     
     //Start here for results outpout
