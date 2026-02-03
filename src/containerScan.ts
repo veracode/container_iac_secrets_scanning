@@ -16,7 +16,7 @@ export async function ContainerScan(parameters:any) {
 
   env.VERACODE_API_KEY_ID= parameters.vid
   env.VERACODE_API_KEY_SECRET= parameters.vkey
-  
+  const generate_sbom_output = parameters.generate_sbom_output !== 'false';
   //run this when oputput is requires and we may create issues and/or PR decorations
   if ( parameters.command == "scan" ){
 
@@ -59,7 +59,7 @@ export async function ContainerScan(parameters:any) {
       commands.push(run_cli(scanTextCommand, parameters.debug, 'results.txt', parameters.fail_build_on_error));
     }
 
-    if (parameters.generate_sbom_output !== 'false') {
+    if (generate_sbom_output) {
       commands.push(...buildSbomCommands());
     }
 
@@ -75,7 +75,7 @@ export async function ContainerScan(parameters:any) {
     const files = [
       parameters.format === 'json' ? 'results.json' : undefined,
       'results.txt',
-      ...(parameters.generate_sbom_output ? sbomConfigs.map(c => c.file) : [])
+      ...(generate_sbom_output ? sbomConfigs.map(c => c.file) : [])
     ].filter((file): file is string => !!file);
     console.log("files: ", files);
     await store_artifacts(files, parameters.debug, parameters.platformType);

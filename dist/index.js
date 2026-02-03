@@ -99774,6 +99774,7 @@ function ContainerScan(parameters) {
         (0, install_cli_1.install_cli)(parameters);
         process_1.env.VERACODE_API_KEY_ID = parameters.vid;
         process_1.env.VERACODE_API_KEY_SECRET = parameters.vkey;
+        const generate_sbom_output = parameters.generate_sbom_output !== 'false';
         //run this when oputput is requires and we may create issues and/or PR decorations
         if (parameters.command == "scan") {
             //generate command to run
@@ -99801,7 +99802,7 @@ function ContainerScan(parameters) {
             else {
                 commands.push((0, run_command_1.run_cli)(scanTextCommand, parameters.debug, 'results.txt', parameters.fail_build_on_error));
             }
-            if (parameters.generate_sbom_output !== 'false') {
+            if (generate_sbom_output) {
                 commands.push(...buildSbomCommands());
             }
             function runParallelFunctions() {
@@ -99816,7 +99817,7 @@ function ContainerScan(parameters) {
             const files = [
                 parameters.format === 'json' ? 'results.json' : undefined,
                 'results.txt',
-                ...(parameters.generate_sbom_output ? sbomConfigs.map(c => c.file) : [])
+                ...(generate_sbom_output ? sbomConfigs.map(c => c.file) : [])
             ].filter((file) => !!file);
             console.log("files: ", files);
             yield (0, store_artifacts_1.store_artifacts)(files, parameters.debug, parameters.platformType);
