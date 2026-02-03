@@ -59,9 +59,10 @@ export async function ContainerScan(parameters:any) {
       commands.push(run_cli(scanTextCommand, parameters.debug, 'results.txt', parameters.fail_build_on_error));
     }
 
-    console.log("parameters.generate_sbom_output: ", parameters.generate_sbom_output);
+    console.log("parameters.generate_sbom_output : ");
+    console.log(parameters.generate_sbom_output);
 
-    if (parameters.generate_sbom_output) {
+    if (parameters.generate_sbom_output !== 'false') {
       commands.push(...buildSbomCommands());
     }
 
