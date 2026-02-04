@@ -16,86 +16,70 @@ export async function ContainerScan(parameters:any) {
 
   env.VERACODE_API_KEY_ID= parameters.vid
   env.VERACODE_API_KEY_SECRET= parameters.vkey
-  
+  const generate_sbom_output = parameters.generate_sbom_output !== 'false';
   //run this when oputput is requires and we may create issues and/or PR decorations
   if ( parameters.command == "scan" ){
 
-    let results_file = ""
-    if ( parameters.format == "json" ){
-      results_file = 'results.json'
-    }
-    else {
-      results_file = 'results.txt'
-    }
-
     //generate command to run
-    let scanCommandOriginal = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format ${parameters.format} --output ${results_file} --temp ./`
-    
+    const scanJsonCommand = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format json --output results.json --temp ./`;
+    const scanTextCommand = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format table --output results.txt --temp ./`;
+
     if ( parameters.debug == "true" ){
       core.info('#### DEBUG START ####')
       core.info('containerScan.ts - original scan command')
-      core.info(scanCommandOriginal)
+      core.info(scanJsonCommand)
+      core.info(scanTextCommand)
       core.info('#### DEBUG END ####')
     }
 
-    //create SBOM commands
-    let sbom_cyclonedx_xml = `sbom --source ${parameters.source} --type ${parameters.type} --format cyclonedx-xml --output sbom_cyclonedx_xml.xml`
-    let sbom_cyclonedx_xml_results_file = 'sbom_cyclonedx_xml.xml'
-
-    let sbom_cyclonedx_json = `sbom --source ${parameters.source} --type ${parameters.type} --format cyclonedx-json --output sbom_cyclonedx_json.json`
-    let sbom_cyclonedx_json_results_file = 'sbom_cyclonedx_json.json'
-
-    let sbom_spdx_tag_value = `sbom --source ${parameters.source} --type ${parameters.type} --format spdx-tag-value --output sbom_spdx_tag_value.json`
-    let sbom_spdx_tag_value_results_file = 'sbom_spdx_tag_value.json'
-
-    let sbom_spdx_json = `sbom --source ${parameters.source} --type ${parameters.type} --format spdx-json --output sbom_spdx_json.json`
-    let sbom_spdx_json_results_file = 'sbom_spdx_json.json'
-
-    let sbom_github = `sbom --source ${parameters.source} --type ${parameters.type} --format github --output sbom_github.json`
-    let sbom_github_results_file = 'sbom_github.json'
+    const sbomConfigs = [
+      { format: 'cyclonedx-xml', file: 'sbom_cyclonedx_xml.xml' },
+      { format: 'cyclonedx-json', file: 'sbom_cyclonedx_json.json' },
+      { format: 'spdx-tag-value', file: 'sbom_spdx_tag_value.json' },
+      { format: 'spdx-json', file: 'sbom_spdx_json.json' },
+      { format: 'github', file: 'sbom_github.json' }
+    ];
 
 
-    //always run this to generate text output
-    if ( parameters.format == "json" ){
-      async function runParallelFunctions(): Promise<void> {
-        //also run the scan to get text output
-        let scanCommandText = `${parameters.command} --source ${parameters.source} --type ${parameters.type} --format table --output results.txt --temp ./`
-        const promises = [run_cli(scanCommandOriginal,parameters.debug,'results.json',parameters.fail_build_on_error), run_cli(scanCommandText,parameters.debug,'results.txt',parameters.fail_build_on_error), run_cli(sbom_cyclonedx_xml,parameters.debug,sbom_cyclonedx_xml_results_file,parameters.fail_build_on_error), run_cli(sbom_cyclonedx_json,parameters.debug,sbom_cyclonedx_json_results_file,parameters.fail_build_on_error), run_cli(sbom_spdx_tag_value,parameters.debug,sbom_spdx_tag_value_results_file,parameters.fail_build_on_error), run_cli(sbom_spdx_json,parameters.debug,sbom_spdx_json_results_file,parameters.fail_build_on_error), run_cli(sbom_github,parameters.debug,sbom_github_results_file,parameters.fail_build_on_error)];
-        await Promise.all(promises);
-        core.info('All functions completed in parallel');
-      }
+    const buildSbomCommands = () =>
+      sbomConfigs.map(({ format, file }) =>
+        run_cli(
+          `sbom --source ${parameters.source} --type ${parameters.type} --format ${format} --output ${file}`,
+          parameters.debug,
+          file,
+          parameters.fail_build_on_error
+        )
+      );
 
-      //run all commands in parallel
-      runParallelFunctions().catch((error) => {
-        console.error('An error occurred:', error);
-      });
-
-      //store artifacts
-      let files = ['results.json','results.txt','sbom_cyclonedx_xml.xml','sbom_cyclonedx_json.json','sbom_spdx_tag_value.json','sbom_spdx_json.json','sbom_github.json']
-      let storeArtifacts = await store_artifacts(files,parameters.debug, parameters?.platformType)
-    }
-    else {
-      async function runParallelFunctions(): Promise<void> {
-        const promises = [run_cli(scanCommandOriginal,parameters.debug,'results.txt',parameters.fail_build_on_error), run_cli(sbom_cyclonedx_xml,parameters.debug,sbom_cyclonedx_xml_results_file,parameters.fail_build_on_error), run_cli(sbom_cyclonedx_json,parameters.debug,sbom_cyclonedx_json_results_file,parameters.fail_build_on_error), run_cli(sbom_spdx_tag_value,parameters.debug,sbom_spdx_tag_value_results_file,parameters.fail_build_on_error), run_cli(sbom_spdx_json,parameters.debug,sbom_spdx_json_results_file,parameters.fail_build_on_error), run_cli(sbom_github,parameters.debug,sbom_github_results_file,parameters.fail_build_on_error)];
-        await Promise.all(promises);
-        core.info('All functions completed in parallel');
-      }
-
-      //run all commands in parallel
-      runParallelFunctions().catch((error) => {
-        console.error('An error occurred:', error);
-      });
-
-      //store artifacts
-      let files = ['results.txt','sbom_cyclonedx_xml.xml','sbom_cyclonedx_json.json','sbom_spdx_tag_value.json','sbom_spdx_json.json','sbom_github.json']
-      let storeArtifacts = await store_artifacts(files,parameters.debug, parameters?.platformType)
-
+      const commands: Promise<any>[] = [];
+      
+    if (parameters.format === 'json') {
+      commands.push(run_cli(scanJsonCommand, parameters.debug, 'results.json', parameters.fail_build_on_error));
+      commands.push(run_cli(scanTextCommand, parameters.debug, 'results.txt', parameters.fail_build_on_error));
+    } else {
+      commands.push(run_cli(scanTextCommand, parameters.debug, 'results.txt', parameters.fail_build_on_error));
     }
 
+    if (generate_sbom_output) {
+      commands.push(...buildSbomCommands());
+    }
 
-
+    async function runParallelFunctions(): Promise<void> {
+      await Promise.all(commands);
+      core.info('All functions completed in parallel');
+    }
     
+    runParallelFunctions().catch((error) => {
+      console.error('An error occurred:', error);
+    });
 
+    const files = [
+      parameters.format === 'json' ? 'results.json' : undefined,
+      'results.txt',
+      ...(generate_sbom_output ? sbomConfigs.map(c => c.file) : [])
+    ].filter((file): file is string => !!file);
+
+    await store_artifacts(files, parameters.debug, parameters.platformType);
     
     //Start here for results outpout
 
