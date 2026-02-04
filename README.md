@@ -55,6 +55,8 @@ The tool will need some information passed to it as parameters (many are optiona
     * Fail the build upon findings. Takes true or false
   * debug
     * Enable heavy debug logging. Takes true or false
+  * generate_sbom_output
+    * Default to true. When set to false, SBOM files will not be generated as part of the scan.
 
 
 ## Examples  
