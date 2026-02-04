@@ -28,6 +28,7 @@ export async function ContainerScan(parameters:any) {
       core.info('#### DEBUG START ####')
       core.info('containerScan.ts - original scan command')
       core.info(scanJsonCommand)
+      core.info(scanTextCommand)
       core.info('#### DEBUG END ####')
     }
 
