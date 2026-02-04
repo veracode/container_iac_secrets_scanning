@@ -77,7 +77,7 @@ export async function ContainerScan(parameters:any) {
       'results.txt',
       ...(generate_sbom_output ? sbomConfigs.map(c => c.file) : [])
     ].filter((file): file is string => !!file);
-    console.log("files: ", files);
+
     await store_artifacts(files, parameters.debug, parameters.platformType);
     
     //Start here for results outpout
