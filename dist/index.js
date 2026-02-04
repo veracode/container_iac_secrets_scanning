@@ -99784,6 +99784,7 @@ function ContainerScan(parameters) {
                 core.info('#### DEBUG START ####');
                 core.info('containerScan.ts - original scan command');
                 core.info(scanJsonCommand);
+                core.info(scanTextCommand);
                 core.info('#### DEBUG END ####');
             }
             const sbomConfigs = [
@@ -99819,7 +99820,6 @@ function ContainerScan(parameters) {
                 'results.txt',
                 ...(generate_sbom_output ? sbomConfigs.map(c => c.file) : [])
             ].filter((file) => !!file);
-            console.log("files: ", files);
             yield (0, store_artifacts_1.store_artifacts)(files, parameters.debug, parameters.platformType);
             //Start here for results outpout
             let results = "";
