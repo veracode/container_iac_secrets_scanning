@@ -1,8 +1,5 @@
 import * as core from "@actions/core"
-import * as artifact from '@actions/artifact'
 import * as github from "@actions/github"
-import { execSync } from "child_process";
-import { env } from "process";
 import { ContainerScan } from "./containerScan";
 
 const vid = core.getInput("vid", {required:true})
@@ -16,6 +13,7 @@ const debug = core.getInput("debug", {required:false})
 const fail_build = core.getInput("fail_build", {required:false})
 const fail_build_on_error= core.getInput("fail_build_on_error", {required:false})
 const platformType = core.getInput("platformType", {required:false})
+const generate_sbom_output = core.getInput("generate_sbom_output", {required:false})
 const policy = core.getInput("policy", {required:false})
 
 core.info('check if we run on a pull request')
@@ -63,6 +61,7 @@ const parameters = {
     pr_commentID: pr_commentID,
     fail_build_on_error:fail_build_on_error,
     platformType,
+    generate_sbom_output,
     policy: policy
 }
 
