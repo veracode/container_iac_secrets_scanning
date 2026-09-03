@@ -53,6 +53,6 @@ inputs:
     description: 'Policy name from Veracode platform to use for policy evaluation. The policy name will be URL encoded automatically (e.g., %26 for &, %2F for /).'
     required: false
 runs:
-  using: 'node20'
+  using: 'node24'
   main: 'dist/index.js'
 
