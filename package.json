@@ -14,7 +14,8 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^18.15.7",
-    "typescript": "^5.0.2"
+    "typescript": "^5.0.2",
+    "@vercel/ncc": "^0.38.1"
   },
   "dependencies": {
     "@actions/artifact-v1": "npm:@actions/artifact@^1.1.1",
