@@ -58471,6 +58471,17 @@ function ContainerScan(parameters) {
                 throw error;
             }
         }
+        // 'policy get' exits 0 even when the policy yields no IaC/container rules. In that case
+        // no .rego file is written, and passing a missing file to the scan makes the CLI exit 0
+        // without producing any results at all.
+        const localPolicyFileName = `${parameters.policy}.rego`;
+        if (!fs.existsSync(localPolicyFileName)) {
+            core.warning('No matching IaC rules available in policy. Proceeding without policy evaluation.');
+            policyFileName = "";
+        }
+        else {
+            policyFileName = localPolicyFileName;
+        }
         //run this when oputput is requires and we may create issues and/or PR decorations
         if (parameters.command == "scan") {
             //generate command to run
