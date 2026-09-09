@@ -58479,6 +58479,9 @@ function ContainerScan(parameters) {
             core.warning('No matching IaC rules available in policy. Proceeding without policy evaluation.');
             policyFileName = "";
         }
+        else {
+            policyFileName = `"${localPolicyFileName}"`;
+        }
         //run this when oputput is requires and we may create issues and/or PR decorations
         if (parameters.command == "scan") {
             //generate command to run
