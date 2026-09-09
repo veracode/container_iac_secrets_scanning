@@ -1,5 +1,4 @@
 import * as core from "@actions/core"
-import * as artifact from '@actions/artifact'
 import { execSync, exec } from "child_process";
 import path from "path";
 
