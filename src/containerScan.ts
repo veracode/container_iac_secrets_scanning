@@ -74,7 +74,7 @@ export async function ContainerScan(parameters: any) {
     try {
       policyFileName = await download_policy(parameters.policy, parameters.debug);
     } catch (error: any) {
-      core.error(`Failed to download policy: ${error.message}`);
+      core.error(`Failed to download policy ${parameters.policy}: ${error.message}`);
       throw error;
     }
   }
@@ -84,7 +84,7 @@ export async function ContainerScan(parameters: any) {
   // without producing any results at all.
   const localPolicyFileName = `${parameters.policy}.rego`;
   if (!fs.existsSync(localPolicyFileName)) {
-    core.warning('No matching IaC rules available in policy. Proceeding without policy evaluation.');
+    core.warning(`No matching IaC rules available in policy ${parameters.policy}. Proceeding without policy evaluation.`);
     policyFileName = "";
   } else {
     policyFileName = `"${localPolicyFileName}"`;
