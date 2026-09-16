@@ -51,6 +51,8 @@ The tool will need some information passed to it as parameters (many are optiona
     * Default is 'directory'
 
 * Optional
+  * policy
+    * **Strongly recommended**: Policy name from the Veracode platform to use for policy evaluation. The policy name will be automatically URL encoded (e.g., %26 for &, %2F for /) when downloading and using the policy. If a policy is not specified, the policy shield on the Veracode platform will remain empty and the action will not be able to make a decision on whether the workflow step should fail based on policy violations. The policy will be downloaded as a `.rego` file and attached to all scan commands.
   * fail_build
     * Fail the build upon findings. Takes true or false
   * debug
@@ -83,6 +85,7 @@ The basic yml
             type: "directory"
             source: "./"
             format: "json"
+            policy: "My Policy Name"
             debug: false
             fail_build: true
   ``` 
